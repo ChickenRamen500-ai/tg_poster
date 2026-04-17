@@ -39,9 +39,27 @@ function testSend(qid) {
     });
 }
 
-// Автообновление страницы управления очередью каждые 10 секунд
+// Частичное автообновление только таблицы логов (без основной информации)
 setInterval(function() {
-  location.reload();
+  fetch(window.location.href, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(response => response.text())
+  .then(html => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Обновляем только таблицу с логами
+    const newTable = doc.querySelector('h4 + table');
+    const oldTable = document.querySelector('h4 + table');
+    
+    if (newTable && oldTable) {
+      oldTable.innerHTML = newTable.innerHTML;
+    }
+    
+    console.log('🔄 Логи обновлены автоматически');
+  })
+  .catch(err => console.error('Ошибка автообновления:', err));
 }, 10000);
 </script>
 {% endblock %}
