@@ -226,9 +226,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Автообновление страницы очередей каждые 10 секунд
+  // Частичное автообновление только таблиц с очередями (без формы создания)
   setInterval(function() {
-    location.reload();
+    fetch(window.location.href, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Обновляем только таблицы с очередями
+      const newTables = doc.querySelectorAll('h4 ~ table');
+      const oldTables = document.querySelectorAll('h4 ~ table');
+      
+      if (newTables.length === oldTables.length) {
+        for (let i = 0; i < newTables.length; i++) {
+          oldTables[i].innerHTML = newTables[i].innerHTML;
+        }
+      }
+      
+      // Обновляем индикатор автообновления (если есть изменения в статусах)
+      console.log('🔄 Очереди обновлены автоматически');
+    })
+    .catch(err => console.error('Ошибка автообновления:', err));
   }, 10000);
 });
 </script>
