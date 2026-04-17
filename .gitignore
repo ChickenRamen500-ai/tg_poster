@@ -48,3 +48,5 @@ wheels/
 # Web artifacts
 static/dist/
 static/build/
+app/__pycache__/main.cpython-313.pyc
+data/poster.db
