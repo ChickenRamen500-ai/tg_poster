@@ -25,6 +25,27 @@ def add_channel():
         conn.commit()
     return redirect(url_for("dashboard"))
 
+@app.route("/api/edit_channel/<int:cid>", methods=["POST"])
+def edit_channel(cid):
+    """Редактирование канала: имя и chat_id"""
+    with get_conn() as conn:
+        conn.execute("UPDATE channels SET name=?, chat_id=? WHERE id=?",
+                    (request.form["name"], request.form["chat_id"], cid))
+        conn.commit()
+    return redirect(request.referrer or url_for("queues_list"))
+
+@app.route("/api/delete_channel/<int:cid>", methods=["POST"])
+def delete_channel(cid):
+    """Удаление канала"""
+    with get_conn() as conn:
+        # Проверяем, есть ли очереди у этого канала
+        queues_count = conn.execute("SELECT COUNT(*) FROM queues WHERE channel_id=?", (cid,)).fetchone()[0]
+        if queues_count > 0:
+            return jsonify({"success": False, "error": f"Нельзя удалить канал: у него есть {queues_count} очередей"}), 400
+        conn.execute("DELETE FROM channels WHERE id=?", (cid,))
+        conn.commit()
+    return redirect(request.referrer or url_for("queues_list"))
+
 @app.route("/queues")
 def queues_list():
     with get_conn() as conn:

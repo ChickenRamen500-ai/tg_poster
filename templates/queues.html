@@ -53,6 +53,8 @@
   
   <h4 style="margin-top:30px; border-bottom:2px solid #444; padding-bottom:5px">
     📡 {{ ch_name }} (ID: {{ ch_id }})
+    <button onclick="openEditModal({{ ch_id }}, '{{ ch_name }}', '')" class="btn" style="background:#FF9800; margin-left:10px; font-size:12px">✏️ Редактировать канал</button>
+    <button onclick="deleteChannel({{ ch_id }}, '{{ ch_name }}')" class="btn" style="background:#f44336; margin-left:5px; font-size:12px">🗑 Удалить канал</button>
   </h4>
   
   <table>
@@ -83,7 +85,7 @@
         </td>
         <td>{{ q.interval_sec }}+{{ q.jitter_sec }}</td>
         <td class="status-{{ q.status }}">
-          {{ '🟢 active' if q.status=='active' else '🟡 queued' if q.status=='queued' else '🟠 pending' if q.status=='pending' else '⏸ paused' if q.status=='paused' else '⚪ ended' }}
+          {{ '🟢 активна' if q.status=='active' else '🟡 в очереди' if q.status=='queued' else '🟠 ожидание' if q.status=='pending' else '⏸ на паузе' if q.status=='paused' else '⏹ завершена' }}
         </td>
         <td>
           <!-- Кнопки Up/Down для изменения приоритета (только для queued и active) -->
@@ -132,6 +134,9 @@
               🗑
             </button>
           </form>
+
+          <!-- Кнопка управления текущей очередью -->
+          <a href="/queue/{{ q.id }}/manage" class="btn" style="background:#9C27B0" title="Управление текущей очередью">⚙</a>
         </td>
       </tr>
       {% endfor %}
@@ -143,4 +148,51 @@
 .status-active{color:#4CAF50;font-weight:bold}.status-queued{color:#FFC107}.status-pending{color:#FF9800}.status-paused{color:#9E9E9E}.status-ended{color:#607D8B;font-style:italic}
 .btn{padding:5px 8px;border:none;border-radius:4px;cursor:pointer;color:white;font-size:14px}.btn:hover{opacity:0.8}
 </style>
+
+<!-- Модальное окно редактирования канала -->
+<div id="editChannelModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#2d2d2d; padding:20px; border-radius:8px; min-width:300px">
+    <h4>✏️ Редактировать канал</h4>
+    <form id="editChannelForm" method="post">
+      <input type="hidden" name="channel_id" id="edit_channel_id">
+      <div style="margin-bottom:10px">
+        <label>Название:</label><br>
+        <input name="name" id="edit_name" required style="width:100%; margin-top:5px">
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Chat ID / Ссылка:</label><br>
+        <input name="chat_id" id="edit_chat_id" required style="width:100%; margin-top:5px">
+      </div>
+      <button type="submit" class="btn" style="background:#4CAF50">Сохранить</button>
+      <button type="button" onclick="closeEditModal()" class="btn" style="background:#666; margin-left:10px">Отмена</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEditModal(channelId, channelName, channelChatId) {
+  document.getElementById('edit_channel_id').value = channelId;
+  document.getElementById('edit_name').value = channelName;
+  document.getElementById('edit_chat_id').value = channelChatId;
+  document.getElementById('editChannelForm').action = '/api/edit_channel/' + channelId;
+  document.getElementById('editChannelModal').style.display = 'block';
+}
+
+function closeEditModal() {
+  document.getElementById('editChannelModal').style.display = 'none';
+}
+
+function deleteChannel(channelId, channelName) {
+  if (confirm('Вы уверены, что хотите удалить канал "' + channelName + '"? Это действие необратимо!')) {
+    fetch('/api/delete_channel/' + channelId, {method: 'POST'})
+      .then(r => {
+        if (r.ok) {
+          location.reload();
+        } else {
+          r.json().then(data => alert('Ошибка: ' + data.error));
+        }
+      });
+  }
+}
+</script>
 {% endblock %}
