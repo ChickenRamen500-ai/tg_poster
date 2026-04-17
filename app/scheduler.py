@@ -25,7 +25,7 @@ def get_file_hash(filepath):
         return None
 
 def get_files_from_queue(source_path):
-    """Возвращает список файлов из папки + всех подпапок (рекурсивно)"""
+    """Возвращает список файлов из папки + всех подпапок (рекурсивно), исключая файлы из sended"""
     if not source_path:
         return []
     
@@ -33,14 +33,16 @@ def get_files_from_queue(source_path):
     if not path.exists():
         return []
     
-    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac"}
+    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac", ".avif"}
     
     files = []
     for f in path.rglob("*"):
+        # Пропускаем файлы из папки sended
+        if 'sended' in f.parts:
+            continue
         if f.is_file() and f.suffix.lower() in valid_ext:
             files.append(str(f))
     
-    print(f"    📊 Найдено файлов (рекурсивно): {len(files)}")
     return files
 
 def generate_caption(queue_name, filepath, source_path):
@@ -139,6 +141,24 @@ def auto_switch_queues():
                     conn.execute("UPDATE queues SET status='active' WHERE id=?", (ready["id"],))
                     print(f"  🟢 Очередь #{ready['id']} активирована (канал {channel_id})")
         
+        # 4. Продвижение очередей со статуса 'queued' в 'active' при освобождении канала
+        # Для каждого канала с активной очередью проверяем, не завершилась ли она
+        # И для каналов без активной очереди, но с queued - активируем первую
+        for ch_row in conn.execute("SELECT DISTINCT channel_id FROM queues"):
+            channel_id = ch_row["channel_id"]
+            active = conn.execute("SELECT id FROM queues WHERE channel_id=? AND status='active'", (channel_id,)).fetchone()
+            if not active:
+                # Нет активной - пробуем активировать первую из queued
+                next_q = conn.execute("""
+                    SELECT id FROM queues 
+                    WHERE channel_id=? AND status='queued' 
+                    ORDER BY queue_order ASC LIMIT 1
+                """, (channel_id,)).fetchone()
+                if next_q:
+                    now = time.strftime("%Y-%m-%d %H:%M:%S")
+                    conn.execute("UPDATE queues SET status='active', queue_order=0, actual_start_time=? WHERE id=?", (now, next_q["id"]))
+                    print(f"  🟢 Очередь #{next_q['id']} активирована из queued (канал {channel_id})")
+        
         conn.commit()
         
 def _try_activate_queue(conn, channel_id, queue_id):
@@ -185,6 +205,19 @@ def _promote_next_queue(conn, channel_id):
         now = time.strftime("%Y-%m-%d %H:%M:%S")
         conn.execute("UPDATE queues SET status='active', queue_order=0, actual_start_time=? WHERE id=?", (now, next_q["id"]))
         print(f"  🟢 Очередь #{next_q['id']} активирована")
+    
+    # Если нет queued, проверяем paused без prev_queue_id (после принудительного завершения)
+    # и активируем первую pending если есть
+    if not prev and not next_q:
+        pending = conn.execute("""
+            SELECT id FROM queues 
+            WHERE channel_id=? AND status='pending' 
+            ORDER BY start_time ASC LIMIT 1
+        """, (channel_id,)).fetchone()
+        if pending:
+            now = time.strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute("UPDATE queues SET status='active', actual_start_time=? WHERE id=?", (now, pending["id"]))
+            print(f"  🟢 Очередь #{pending['id']} активирована из pending")
         
 def process_queues():
     """Проходит по активным очередям и отправляет посты"""
