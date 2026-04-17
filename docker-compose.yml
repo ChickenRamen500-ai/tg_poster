@@ -6,10 +6,8 @@ services:
     ports:
       - "7777:7777"
     volumes:
-      # Абсолютный путь к проекту на C: (используйте двойные слеши или прямые)
-      - "C:/tg_manager/tg_poster:/app"
-      # Путь к медиа — УБЕДИТЕСЬ, что папка существует!
-      - "C:/tg_media:/app/media"
+    - .:/app
+    - "C:/tg_media:/app/media"
     environment:
       - BOT_TOKEN=7645199777:AAGsqPXgyd-IWPTX-S7sAOPPDydSkXwmXVI
       - TZ=Asia/Yekaterinburg
