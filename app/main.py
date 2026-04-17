@@ -39,7 +39,8 @@ def edit_channel(cid):
         
         conn.execute("UPDATE channels SET name=?, chat_id=? WHERE id=?", (name, chat_id, cid))
         conn.commit()
-    return redirect(request.referrer or url_for("queues_list"))
+    # Возвращаем JSON вместо redirect для корректной обработки ошибки в JS
+    return jsonify({"success": True, "redirect": request.referrer or url_for("queues_list")})
 
 @app.route("/api/delete_channel/<int:cid>", methods=["POST"])
 def delete_channel(cid):

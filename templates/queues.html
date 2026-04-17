@@ -3,8 +3,7 @@
 
 <h3>📋 Все очереди</h3>
 <div style="margin-bottom:10px">
-  <button onclick="location.reload()" class="btn" style="background:#2196F3">🔄 Обновить</button>
-  <span style="color:#666; margin-left:10px">Автообновление отключено</span>
+  <span style="color:#666; margin-left:10px">🔄 Автообновление каждые 10 сек</span>
 </div>
 
 <form action="/api/add_queue" method="post" style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
@@ -56,6 +55,10 @@
     📡 {{ ch_name }} (ID: {{ ch_id }})
     <button onclick="openEditModal({{ ch_id }}, '{{ ch_name }}', '{{ ch_chat_id }}')" class="btn" style="background:#FF9800; margin-left:10px; font-size:12px">✏️ Редактировать канал</button>
     <button onclick="deleteChannel({{ ch_id }}, '{{ ch_name }}')" class="btn" style="background:#f44336; margin-left:5px; font-size:12px">🗑 Удалить канал</button>
+    {% set active_queue = ch_queues | selectattr('status', 'equalto', 'active') | first %}
+    {% if active_queue %}
+      <a href="/queue/{{ active_queue.id }}/manage" class="btn" style="background:#9C27B0; margin-left:10px; font-size:12px">⚙ Управление текущей очередью</a>
+    {% endif %}
   </h4>
   
   <table>
@@ -199,5 +202,34 @@ function deleteChannel(channelId, channelName) {
       });
   }
 }
+
+// Обрабатываем отправку формы редактирования канала через AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  var editForm = document.getElementById('editChannelForm');
+  if (editForm) {
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var formData = new FormData(editForm);
+      fetch(editForm.action, {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Ошибка: ' + data.error);
+        }
+      })
+      .catch(err => alert('Ошибка сети: ' + err));
+    });
+  }
+  
+  // Автообновление страницы очередей каждые 10 секунд
+  setInterval(function() {
+    location.reload();
+  }, 10000);
+});
 </script>
 {% endblock %}

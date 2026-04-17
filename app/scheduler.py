@@ -25,7 +25,7 @@ def get_file_hash(filepath):
         return None
 
 def get_files_from_queue(source_path):
-    """Возвращает список файлов из папки + всех подпапок (рекурсивно)"""
+    """Возвращает список файлов из папки + всех подпапок (рекурсивно), исключая файлы из sended"""
     if not source_path:
         return []
     
@@ -33,15 +33,16 @@ def get_files_from_queue(source_path):
     if not path.exists():
         return []
     
-    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac"}
+    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac", ".avif"}
     
     files = []
     for f in path.rglob("*"):
+        # Пропускаем файлы из папки sended
+        if 'sended' in f.parts:
+            continue
         if f.is_file() and f.suffix.lower() in valid_ext:
             files.append(str(f))
     
-    # Выводим только один раз при вызове функции, а не каждый лог
-    # print(f"    📊 Найдено файлов (рекурсивно): {len(files)}")
     return files
 
 def generate_caption(queue_name, filepath, source_path):
@@ -204,6 +205,19 @@ def _promote_next_queue(conn, channel_id):
         now = time.strftime("%Y-%m-%d %H:%M:%S")
         conn.execute("UPDATE queues SET status='active', queue_order=0, actual_start_time=? WHERE id=?", (now, next_q["id"]))
         print(f"  🟢 Очередь #{next_q['id']} активирована")
+    
+    # Если нет queued, проверяем paused без prev_queue_id (после принудительного завершения)
+    # и активируем первую pending если есть
+    if not prev and not next_q:
+        pending = conn.execute("""
+            SELECT id FROM queues 
+            WHERE channel_id=? AND status='pending' 
+            ORDER BY start_time ASC LIMIT 1
+        """, (channel_id,)).fetchone()
+        if pending:
+            now = time.strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute("UPDATE queues SET status='active', actual_start_time=? WHERE id=?", (now, pending["id"]))
+            print(f"  🟢 Очередь #{pending['id']} активирована из pending")
         
 def process_queues():
     """Проходит по активным очередям и отправляет посты"""

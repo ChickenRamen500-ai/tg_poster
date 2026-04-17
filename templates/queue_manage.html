@@ -38,5 +38,10 @@ function testSend(qid) {
       location.reload();
     });
 }
+
+// Автообновление страницы управления очередью каждые 10 секунд
+setInterval(function() {
+  location.reload();
+}, 10000);
 </script>
 {% endblock %}
