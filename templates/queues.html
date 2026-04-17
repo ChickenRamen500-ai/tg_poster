@@ -3,8 +3,7 @@
 
 <h3>📋 Все очереди</h3>
 <div style="margin-bottom:10px">
-  <button onclick="location.reload()" class="btn" style="background:#2196F3">🔄 Обновить</button>
-  <span style="color:#666; margin-left:10px">Автообновление отключено</span>
+  <span style="color:#666; margin-left:10px">🔄 Автообновление каждые 10 сек</span>
 </div>
 
 <form action="/api/add_queue" method="post" style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
@@ -50,11 +49,16 @@
 {% for ch_id in channels_dict.list %}
   {% set ch_queues = queues | selectattr('channel_id', 'equalto', ch_id) | list %}
   {% set ch_name = ch_queues[0].channel_name if ch_queues else 'Неизвестный канал' %}
+  {% set ch_chat_id = ch_queues[0].chat_id if ch_queues and ch_queues[0].chat_id else '' %}
   
   <h4 style="margin-top:30px; border-bottom:2px solid #444; padding-bottom:5px">
     📡 {{ ch_name }} (ID: {{ ch_id }})
-    <button onclick="openEditModal({{ ch_id }}, '{{ ch_name }}', '')" class="btn" style="background:#FF9800; margin-left:10px; font-size:12px">✏️ Редактировать канал</button>
+    <button onclick="openEditModal({{ ch_id }}, '{{ ch_name }}', '{{ ch_chat_id }}')" class="btn" style="background:#FF9800; margin-left:10px; font-size:12px">✏️ Редактировать канал</button>
     <button onclick="deleteChannel({{ ch_id }}, '{{ ch_name }}')" class="btn" style="background:#f44336; margin-left:5px; font-size:12px">🗑 Удалить канал</button>
+    {% set active_queue = ch_queues | selectattr('status', 'equalto', 'active') | first %}
+    {% if active_queue %}
+      <a href="/queue/{{ active_queue.id }}/manage" class="btn" style="background:#9C27B0; margin-left:10px; font-size:12px">⚙ Управление текущей очередью</a>
+    {% endif %}
   </h4>
   
   <table>
@@ -80,7 +84,11 @@
         </td>
         <td>{{ q.source_path }}</td>
         <td>
-          <div>{{ q.start_time[:10] }} {{ q.start_time[11:16] }} → {{ q.end_time[:10] }} {{ q.end_time[11:16] }}</div>
+          {% if q.start_time and q.end_time %}
+            <div>{{ q.start_time[:10] }} {{ q.start_time[11:16] }} → {{ q.end_time[:10] }} {{ q.end_time[11:16] }}</div>
+          {% else %}
+            <div style="color:#aaa">Без расписания</div>
+          {% endif %}
           {% if q.eta_min != '—' %}<small style="color:#aaa">ETA: ~{{ q.eta_min }}–{{ q.eta_max }}</small>{% endif %}
         </td>
         <td>{{ q.interval_sec }}+{{ q.jitter_sec }}</td>
@@ -194,5 +202,55 @@ function deleteChannel(channelId, channelName) {
       });
   }
 }
+
+// Обрабатываем отправку формы редактирования канала через AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  var editForm = document.getElementById('editChannelForm');
+  if (editForm) {
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var formData = new FormData(editForm);
+      fetch(editForm.action, {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Ошибка: ' + data.error);
+        }
+      })
+      .catch(err => alert('Ошибка сети: ' + err));
+    });
+  }
+  
+  // Частичное автообновление только таблиц с очередями (без формы создания)
+  setInterval(function() {
+    fetch(window.location.href, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Обновляем только таблицы с очередями
+      const newTables = doc.querySelectorAll('h4 ~ table');
+      const oldTables = document.querySelectorAll('h4 ~ table');
+      
+      if (newTables.length === oldTables.length) {
+        for (let i = 0; i < newTables.length; i++) {
+          oldTables[i].innerHTML = newTables[i].innerHTML;
+        }
+      }
+      
+      // Обновляем индикатор автообновления (если есть изменения в статусах)
+      console.log('🔄 Очереди обновлены автоматически');
+    })
+    .catch(err => console.error('Ошибка автообновления:', err));
+  }, 10000);
+});
 </script>
 {% endblock %}

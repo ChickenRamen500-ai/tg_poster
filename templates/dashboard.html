@@ -11,20 +11,23 @@
   </tr>
   {% for ch in channels %}
   {% set channel_queues = queues | selectattr('channel_id', 'equalto', ch.id) | list %}
+  {% set active_queue = channel_queues | selectattr('status', 'equalto', 'active') | first %}
   <tr>
     <td>{{ ch.name }}</td>
     <td>{{ ch.id }}</td>
     <td>{{ ch.chat_id }}</td>
     <td>{{ channel_queues | length }}</td>
     <td>
-      {% if channel_queues %}
-        <a href="/queue/{{ channel_queues[0].id }}/manage" class="btn">⚙ Управление текущей очередью</a>
+      {% if active_queue %}
+        <a href="/queue/{{ active_queue.id }}/manage" class="btn">⚙ Управление текущей очередью</a>
+      {% elif channel_queues %}
+        <a href="/queue/{{ channel_queues[0].id }}/manage" class="btn">⚙ Управление очередью</a>
       {% else %}
         <span style="color:#666; font-size:0.9em">Нет очередей</span>
         <a href="/queues" class="btn" style="margin-left:10px">📋 Все очереди</a>
-        <button onclick="openEditModal({{ ch.id }}, '{{ ch.name }}', '{{ ch.chat_id }}')" class="btn" style="background:#FF9800; margin-left:5px">✏️</button>
-        <button onclick="deleteChannel({{ ch.id }}, '{{ ch.name }}')" class="btn" style="background:#f44336; margin-left:5px">🗑</button>
       {% endif %}
+      <button onclick="openEditModal({{ ch.id }}, '{{ ch.name }}', '{{ ch.chat_id }}')" class="btn" style="background:#FF9800; margin-left:5px">✏️</button>
+      <button onclick="deleteChannel({{ ch.id }}, '{{ ch.name }}')" class="btn" style="background:#f44336; margin-left:5px">🗑</button>
     </td>
   </tr>
   {% endfor %}
@@ -82,5 +85,29 @@ function deleteChannel(channelId, channelName) {
       });
   }
 }
+
+// Обрабатываем отправку формы редактирования канала через AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  var editForm = document.getElementById('editChannelForm');
+  if (editForm) {
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var formData = new FormData(editForm);
+      fetch(editForm.action, {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Ошибка: ' + data.error);
+        }
+      })
+      .catch(err => alert('Ошибка сети: ' + err));
+    });
+  }
+});
 </script>
 {% endblock %}

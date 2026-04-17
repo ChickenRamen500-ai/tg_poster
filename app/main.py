@@ -28,11 +28,19 @@ def add_channel():
 @app.route("/api/edit_channel/<int:cid>", methods=["POST"])
 def edit_channel(cid):
     """Редактирование канала: имя и chat_id"""
+    name = request.form["name"]
+    chat_id = request.form["chat_id"]
+    
     with get_conn() as conn:
-        conn.execute("UPDATE channels SET name=?, chat_id=? WHERE id=?",
-                    (request.form["name"], request.form["chat_id"], cid))
+        # Проверяем, не используется ли этот chat_id другим каналом
+        existing = conn.execute("SELECT id FROM channels WHERE chat_id=? AND id!=?", (chat_id, cid)).fetchone()
+        if existing:
+            return jsonify({"success": False, "error": "Такой Chat ID уже используется другим каналом"}), 400
+        
+        conn.execute("UPDATE channels SET name=?, chat_id=? WHERE id=?", (name, chat_id, cid))
         conn.commit()
-    return redirect(request.referrer or url_for("queues_list"))
+    # Возвращаем JSON вместо redirect для корректной обработки ошибки в JS
+    return jsonify({"success": True, "redirect": request.referrer or url_for("queues_list")})
 
 @app.route("/api/delete_channel/<int:cid>", methods=["POST"])
 def delete_channel(cid):
