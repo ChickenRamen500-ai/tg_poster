@@ -21,7 +21,7 @@
         <a href="/queue/{{ channel_queues[0].id }}/manage" class="btn">⚙ Управление текущей очередью</a>
       {% else %}
         <span style="color:#666; font-size:0.9em">Нет очередей</span>
-        <a href="/queues" class="btn" style="margin-left:10px">📋 Все очереди</a>
+        <!-- a href="/queues" class="btn" style="margin-left:10px">📋 Все очереди</a -->
       {% endif %}
       <button onclick="openEditModal({{ ch.id }}, '{{ ch.name }}', '{{ ch.chat_id }}')" class="btn" style="background:#FF9800; margin-left:5px">✏️</button>
       <button onclick="deleteChannel({{ ch.id }}, '{{ ch.name }}')" class="btn" style="background:#f44336; margin-left:5px">🗑</button>
