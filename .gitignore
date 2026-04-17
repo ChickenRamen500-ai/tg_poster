@@ -1,53 +1,42 @@
 ```
-# Compiled and build artifacts
+# Compiled Python files
 *.pyc
 __pycache__/
 
 # Dependencies
 .venv/
 venv/
-.env
-.env.local
-*.env.*
+node_modules/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
 
+# Environment
+.env
+.env.local
+*.env.*
+
 # Editors
 .vscode/
 .idea/
 
-# Coverage
-.coverage
+# Build artifacts
+dist/
+build/
+target/
+
+# Coverage reports
 coverage/
 htmlcov/
+.coverage
 
-# Python specific
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# OS generated files
+.DS_Store
+Thumbs.db
 
-# Web artifacts
-static/dist/
-static/build/
-app/__pycache__/main.cpython-313.pyc
-data/poster.db
-data/poster.db
+# Testing
+.pytest_cache/
+.mypy_cache/
+```
