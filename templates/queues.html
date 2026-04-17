@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>📋 Все очереди</h3>
+<div style="margin-bottom:10px">
+  <button onclick="location.reload()" class="btn" style="background:#2196F3">🔄 Обновить</button>
+  <span style="color:#666; margin-left:10px">Автообновление отключено</span>
+</div>
+
+<form action="/api/add_queue" method="post" style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
+  <h4>➕ Новая очередь</h4>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end">
+    <div><label>📡 Канал:</label>
+      <select name="channel_id" required>
+        <option value="">Выберите</option>
+        {% for ch in channels %}<option value="{{ ch.id }}">{{ ch.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label>🏷 Название:</label><input name="name" placeholder="Название" required></div>
+    <div><label>⏰ Период (необязательно):</label>
+      <input name="start" type="datetime-local" placeholder="начало"> → <input name="end" type="datetime-local" placeholder="конец">
+    </div>
+    <div><label>⏱ Интервал:</label>
+      <input name="interval" type="number" value="60" min="10" style="width:60px"> сек +
+      <input name="jitter" type="number" value="5" min="0" style="width:50px"> сек
+    </div>
+    <div><label>📁 Папка:</label>
+      <select name="source_path" required>
+        <option value="">-- выбрать --</option>
+        {% for f in folders %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn">Создать</button>
+  </div>
+  <small style="color:#aaa; display:block; margin-top:8px">💡 Если не указать время, очередь будет создана без расписания и начнётся после завершения предыдущей</small>
+</form>
+
+<h3>📋 Очереди по каналам</h3>
+
+<!-- Форма создания (без изменений) -->
+
+<!-- Группировка по каналам -->
+{% set channels_dict = namespace(list=[]) %}
+{% for q in queues %}
+  {% if q.channel_id not in channels_dict.list %}
+    {% set channels_dict.list = channels_dict.list + [q.channel_id] %}
+  {% endif %}
+{% endfor %}
+
+{% for ch_id in channels_dict.list %}
+  {% set ch_queues = queues | selectattr('channel_id', 'equalto', ch_id) | list %}
+  {% set ch_name = ch_queues[0].channel_name if ch_queues else 'Неизвестный канал' %}
+  
+  <h4 style="margin-top:30px; border-bottom:2px solid #444; padding-bottom:5px">
+    📡 {{ ch_name }} (ID: {{ ch_id }})
+  </h4>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>№</th><th>ID</th><th>Очередь</th><th>Прогресс</th><th>Папка</th><th>Период / ETA</th>
+        <th>Интервал</th><th>Статус</th><th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in ch_queues %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>#{{ q.id }}</td>
+        <td><a href="/queue/{{ q.id }}/manage">{{ q.name }}</a></td>
+        <td>
+          {% if q.total > 0 %}
+            {{ q.sent }} / {{ q.total }} (текущее)
+            <div style="background:#333; height:6px; border-radius:3px; margin-top:5px">
+              <div style="background:{{ '#4CAF50' if q.sent <= q.total else '#f44336' }}; height:100%; width:{{ [100, (q.sent / q.total * 100)]|min|int }}%"></div>
+            </div>
+          {% else %}0 / 0 (нет файлов){% endif %}
+        </td>
+        <td>{{ q.source_path }}</td>
+        <td>
+          <div>{{ q.start_time[:10] }} {{ q.start_time[11:16] }} → {{ q.end_time[:10] }} {{ q.end_time[11:16] }}</div>
+          {% if q.eta_min != '—' %}<small style="color:#aaa">ETA: ~{{ q.eta_min }}–{{ q.eta_max }}</small>{% endif %}
+        </td>
+        <td>{{ q.interval_sec }}+{{ q.jitter_sec }}</td>
+        <td class="status-{{ q.status }}">
+          {{ '🟢 active' if q.status=='active' else '🟡 queued' if q.status=='queued' else '🟠 pending' if q.status=='pending' else '⏸ paused' if q.status=='paused' else '⚪ ended' }}
+        </td>
+        <td>
+          <!-- Кнопки Up/Down для изменения приоритета (только для queued и active) -->
+          {% if q.status in ['queued', 'active'] and q.queue_order > 0 %}
+          <form action="/api/queue/{{ q.id }}/move" method="post" style="display:inline">
+            <input type="hidden" name="direction" value="up">
+            <button type="submit" class="btn" title="Повысить приоритет (переместить выше в очереди)" 
+                    {% if q.queue_order <= 1 %}disabled style="opacity:0.3"{% endif %}>⬆️</button>
+          </form>
+          <form action="/api/queue/{{ q.id }}/move" method="post" style="display:inline">
+            <input type="hidden" name="direction" value="down">
+            <button type="submit" class="btn" title="Понизить приоритет (переместить ниже в очереди)">⬇️</button>
+          </form>
+          {% endif %}
+          
+          <!-- Кнопка Pause/Resume (показываем только для active и paused) -->
+          {% if q.status in ['active', 'paused'] %}
+          <form action="/api/queue/{{ q.id }}/toggle" method="post" style="display:inline">
+            <button type="submit" class="btn" title="{{ 'Приостановить очередь' if q.status=='active' else 'Возобновить очередь (вернуть в список ожидания)' }}">
+              {{ '⏸' if q.status=='active' else '▶' }}
+            </button>
+          </form>
+          {% endif %}
+          
+          <!-- Кнопка Force Start (для всех кроме active) -->
+          {% if q.status != 'active' %}
+          <form action="/api/queue/{{ q.id }}/force" method="post" style="display:inline">
+            <button type="submit" class="btn" style="background:#FF9800" title="Запустить принудительно (приостановит текущую активную очередь)">
+              ⚡
+            </button>
+          </form>
+          {% endif %}
+          
+          <!-- Кнопка Queue (только для pending) -->
+          {% if q.status == 'pending' %}
+          <form action="/api/queue/{{ q.id }}/queue" method="post" style="display:inline">
+            <button type="submit" class="btn" style="background:#2196F3" title="Добавить в очередь (сменит статус на queued)">
+              📋
+            </button>
+          </form>
+          {% endif %}
+          
+          <!-- Кнопка Delete (красная) -->
+          <form action="/api/queue/{{ q.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Удалить очередь? Это действие необратимо!')">
+            <button type="submit" class="btn" style="background:#f44336" title="Удалить очередь безвозвратно">
+              🗑
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endfor %}
+
+<style>
+.status-active{color:#4CAF50;font-weight:bold}.status-queued{color:#FFC107}.status-pending{color:#FF9800}.status-paused{color:#9E9E9E}.status-ended{color:#607D8B;font-style:italic}
+.btn{padding:5px 8px;border:none;border-radius:4px;cursor:pointer;color:white;font-size:14px}.btn:hover{opacity:0.8}
+</style>
+{% endblock %}

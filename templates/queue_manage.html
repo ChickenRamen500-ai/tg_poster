@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>⚙ Управление: {{ queue.name }}</h3>
+<p><b>Канал:</b> {{ channel.name }} ({{ channel.chat_id }})</p>
+<p><b>Период:</b> {{ queue.start_time }} → {{ queue.end_time }}</p>
+<p><b>Интервал:</b> {{ queue.interval_sec }}с + {{ queue.jitter_sec }}с джиттер</p>
+<p><b>Статус:</b> <span class="status-{{ queue.status }}">{{ queue.status }}</span></p>
+<p><b>Отправлено:</b> {{ queue.last_index }} файлов</p>
+
+<div style="margin:20px 0">
+  <form action="/api/queue/{{ queue.id }}/toggle" method="post">
+    <button type="submit" class="btn btn-{{ 'pause' if queue.status=='active' else 'resume' }}">
+      {{ '⏸ Пауза' if queue.status=='active' else '▶ Запустить' }}
+    </button>
+  </form>
+  <button onclick="testSend({{ queue.id }})" class="btn" style="background:#2196F3">🧪 Тестовая отправка</button>
+</div>
+
+<h4>📜 Последние логи</h4>
+<table>
+  <tr><th>Время</th><th>Тип</th><th>Статус</th><th>Ошибка</th></tr>
+  {% for log in logs %}
+  <tr>
+    <td>{{ log.sent_at }}</td>
+    <td>{{ log.file_type }}</td>
+    <td class="status-{{ 'active' if log.status=='sent' else 'paused' }}">{{ log.status }}</td>
+    <td>{{ log.error or '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<script>
+function testSend(qid) {
+  fetch(`/api/test_send/${qid}`, {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+      alert(data.success ? '✅ Тест отправлен!' : '❌ Ошибка: ' + data.error);
+      location.reload();
+    });
+}
+</script>
+{% endblock %}

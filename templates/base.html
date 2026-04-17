@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head><title>TG Poster</title>
+<style>
+  /* Базовые элементы */
+  body {
+    font-family: sans-serif;
+    margin: 20px;
+    background: #1a1a1a;
+    color: #eee;
+  }
+  a {
+    color: #4da6ff;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+  }
+  th, td {
+    border: 1px solid #444;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background: #2d2d2d;
+  }
+
+  /* Кнопки */
+  .btn {
+    padding: 5px 10px;
+    background: #4CAF50;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+  }
+  .btn-pause {
+    background: #f44336;
+  }
+  .btn-resume {
+    background: #4CAF50;
+  }
+
+  /* Статусы */
+  .status-active {
+    color: #4CAF50;
+    font-weight: bold;
+  }
+  .status-paused {
+    color: #ff9800;
+  }
+  .status-finished {
+    color: #9e9e9e;
+  }
+  .status-error {
+    color: #f44336;
+  }
+  .status-sent {
+    color: #4CAF50;
+  }
+</style>
+</head>
+<body>
+  <h2>📡 TG Poster Manager</h2>
+  <nav><a href="/">Панель</a> | <a href="/queues">Очереди</a></nav>
+  <hr>{% block content %}{% endblock %}
+</body>
+</html>
