@@ -245,8 +245,8 @@ def process_queues():
             logger.info(f"     Интервал: {q['interval_sec']}с + {q['jitter_sec']}с")
             
             # Проверяем, не слишком ли рано для этой очереди
-            next_send_time = q.get('next_send_time')
-            if next_send_time and now < next_send_time:
+            next_send_time = q['next_send_time']
+            if next_send_time is not None and now < next_send_time:
                 wait_seconds = int(next_send_time - now)
                 logger.info(f"    ⏳ Ещё рано, ждём {wait_seconds} сек...")
                 continue
