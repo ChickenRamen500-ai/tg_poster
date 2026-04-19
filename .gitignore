@@ -1,36 +1,58 @@
-```
-# Compiled Python files
-*.pyc
-__pycache__/
-
-# Dependencies
-.venv/
-venv/
-.env
-.env.local
-.env.*
-
-# Logs
-*.log
-
-# Editor/IDE
+*.env*
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
-*.swp
-*.swo
+*.log
 *.tmp
-
-# Build/dist
+*.swp
+*.pyc
+__pycache__/
+*.class
+*.o
+*.exe
+*.dll
+*.so
+*.a
+*.obj
+*.out
+node_modules/
+venv/
+.venv/
+.mypy_cache/
+.pytest_cache/
 dist/
 build/
 target/
-
-# Coverage
-.coverage
+.gradle/
 coverage/
 htmlcov/
-
-# Cache
-.mypy_cache/
-.pytest_cache/
-```
+.coverage
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+*.webm
