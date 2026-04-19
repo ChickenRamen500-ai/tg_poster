@@ -18,6 +18,7 @@ tg_poster/
 ├── docker-compose.yml      # Конфигурация Docker Compose
 ├── Dockerfile              # Образ Docker
 ├── requirements.txt        # Python-зависимости
+├── logging_config.py       # Настройка логирования
 ├── app/
 │   ├── __init__.py
 │   ├── main.py             # Flask-приложение и маршруты
