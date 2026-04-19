@@ -230,17 +230,26 @@ def _promote_next_queue(conn, channel_id):
             logger.info(f"  🟢 Очередь #{pending['id']} активирована из pending")
         
 def process_queues():
-    """Проходит по активным очередям и отправляет посты (асинхронно, без блокирующего sleep)"""
+    """Проходит по активным очередям и отправляет посты (с учётом интервалов)"""
     logger.info("🔄 [PROCESS] Проверка очередей...")
     
     with get_conn() as conn:
         queues = conn.execute("SELECT * FROM queues WHERE status='active'").fetchall()
         logger.info(f"  📋 Найдено активных очередей: {len(queues)}")
         
+        now = time.time()
+        
         for q in queues:
             logger.info(f"\n  📮 Обработка очереди #{q['id']}: {q['name']}")
             logger.info(f"     Источник: {q['source_path']}")
             logger.info(f"     Интервал: {q['interval_sec']}с + {q['jitter_sec']}с")
+            
+            # Проверяем, не слишком ли рано для этой очереди
+            next_send_time = q.get('next_send_time')
+            if next_send_time and now < next_send_time:
+                wait_seconds = int(next_send_time - now)
+                logger.info(f"    ⏳ Ещё рано, ждём {wait_seconds} сек...")
+                continue
             
             if not q["channel_id"]: 
                 logger.warning("    ⚠️ Нет channel_id")
@@ -314,10 +323,13 @@ def process_queues():
             
             conn.commit()
             
-            # Пауза перед следующим - НЕ блокирующая, просто записываем время следующей проверки
+            # Вычисляем и сохраняем время следующей отправки для этой очереди
             delay = get_next_delay(q["interval_sec"], q["jitter_sec"])
-            logger.info(f"    ⏱ Пауза {delay} сек перед следующим постом...")
-            # Убираем time.sleep() - теперь каждая очередь работает независимо через APScheduler
+            next_time = now + delay
+            conn.execute("UPDATE queues SET next_send_time=? WHERE id=?", (next_time, q["id"]))
+            conn.commit()
+            
+            logger.info(f"    ⏱ Пауза {delay} сек перед следующим постом (след. отправка в {time.strftime('%H:%M:%S', time.localtime(next_time))})...")
 
 # Инициализация планировщика
 scheduler = BackgroundScheduler()

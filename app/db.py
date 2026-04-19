@@ -48,6 +48,7 @@ def init_db():
             force_active INTEGER DEFAULT 0,
             prev_queue_id INTEGER DEFAULT 0,
             actual_start_time DATETIME,
+            next_send_time REAL,
             FOREIGN KEY (channel_id) REFERENCES channels(id)
         )""")
         
