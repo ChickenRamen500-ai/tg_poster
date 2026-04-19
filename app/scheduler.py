@@ -230,7 +230,7 @@ def _promote_next_queue(conn, channel_id):
             logger.info(f"  🟢 Очередь #{pending['id']} активирована из pending")
         
 def process_queues():
-    """Проходит по активным очередям и отправляет посты"""
+    """Проходит по активным очередям и отправляет посты (асинхронно, без блокирующего sleep)"""
     logger.info("🔄 [PROCESS] Проверка очередей...")
     
     with get_conn() as conn:
@@ -290,7 +290,9 @@ def process_queues():
             
             # Отправляем
             logger.info(f"    🚀 Отправка в Telegram...")
-            success, err = send_media(ch["chat_id"], filepath, caption=caption)
+            result = send_media(ch["chat_id"], filepath, caption=caption)
+            success = result[0]
+            err = result[1] if len(result) > 1 else None
             
             if success:
                 logger.info(f"    ✅ Успешно отправлено!")
@@ -312,10 +314,10 @@ def process_queues():
             
             conn.commit()
             
-            # Пауза перед следующим
+            # Пауза перед следующим - НЕ блокирующая, просто записываем время следующей проверки
             delay = get_next_delay(q["interval_sec"], q["jitter_sec"])
             logger.info(f"    ⏱ Пауза {delay} сек перед следующим постом...")
-            time.sleep(delay)
+            # Убираем time.sleep() - теперь каждая очередь работает независимо через APScheduler
 
 # Инициализация планировщика
 scheduler = BackgroundScheduler()

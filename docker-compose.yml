@@ -6,9 +6,10 @@ services:
     ports:
       - "7777:7777"
     volumes:
-    - .:/app
-    - "C:/tg_media:/app/media"
+      - .:/app
+      - "C:/tg_media:/app/media"
     environment:
-      - BOT_TOKEN=7645199777:AAGsqPXgyd-IWPTX-S7sAOPPDydSkXwmXVI
-      - TZ=Asia/Yekaterinburg
-    restart: unless-stopped 
+      - BOT_TOKEN=${BOT_TOKEN:-}
+      - TZ=${TZ:-Asia/Yekaterinburg}
+      - MEDIA_PATH=${MEDIA_PATH:-/app/media}
+    restart: unless-stopped
