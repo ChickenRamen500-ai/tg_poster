@@ -1,8 +1,9 @@
 # app/file_scanner.py
 from pathlib import Path
+import os
 
 # Путь внутри контейнера
-BASE_MEDIA = Path("/app/media")
+BASE_MEDIA = Path(os.getenv("MEDIA_PATH", "/app/media"))
 
 def get_folder_tree(base_path=None):
     """Возвращает дерево папок для выбора"""

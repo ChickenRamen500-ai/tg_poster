@@ -2,46 +2,35 @@
 # Compiled Python files
 *.pyc
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+
+# Dependencies
+.venv/
 venv/
-node_modules/
-
-# Logs and temporary files
-*.log
-*.tmp
-*.swp
-
-# Environment files
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editors
+# Logs
+*.log
+
+# Editor/IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*.tmp
 
-# Build/dist directories
+# Build/dist
 dist/
 build/
 target/
 
-# Coverage reports
+# Coverage
 .coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.pytest_cache/
-.mypy_cache/
-.hypothesis/
+coverage/
+htmlcov/
 
-# Python cache
+# Cache
 .mypy_cache/
 .pytest_cache/
 ```

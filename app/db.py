@@ -3,14 +3,14 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = "/app/data/poster.db"
+DB_PATH = os.getenv("DB_PATH", "/app/data/poster.db")
 
 def ensure_db_dir():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 def get_conn():
     ensure_db_dir()
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -46,13 +46,12 @@ def init_db():
             status TEXT DEFAULT 'pending',
             queue_order INTEGER DEFAULT 999,
             force_active INTEGER DEFAULT 0,
-            last_index INTEGER DEFAULT 0,
             prev_queue_id INTEGER DEFAULT 0,
             actual_start_time DATETIME,
             FOREIGN KEY (channel_id) REFERENCES channels(id)
         )""")
         
-        # === post_log (ИСПРАВЛЕНО: было queues, стало post_log) ===
+        # === post_log ===
         conn.execute("""CREATE TABLE post_log (
             id INTEGER PRIMARY KEY,
             queue_id INTEGER,
