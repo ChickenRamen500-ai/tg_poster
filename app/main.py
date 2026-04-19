@@ -6,6 +6,10 @@ from app.file_scanner import get_folders_list
 import os, time, json, datetime
 from pathlib import Path
 
+# Настройка логирования
+from logging_config import setup_logging
+setup_logging()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
 app.jinja_env.autoescape = False
@@ -19,9 +23,23 @@ def dashboard():
 
 @app.route("/api/add_channel", methods=["POST"])
 def add_channel():
+    """Добавление канала с валидацией chat_id через Telegram API"""
+    from app.telegram import send_text
+    
+    chat_id = request.form["chat_id"]
+    name = request.form["name"]
+    
+    # Проверяем, существует ли канал и добавлен ли бот
+    success, err = send_text(chat_id, "🔍 Проверка подключения к каналу...")
+    if not success:
+        return jsonify({
+            "success": False, 
+            "error": f"Не удалось подключиться к каналу: {err}. Убедитесь, что бот добавлен в канал как администратор."
+        }), 400
+    
     with get_conn() as conn:
         conn.execute("INSERT OR IGNORE INTO channels (chat_id, name) VALUES (?,?)", 
-                    (request.form["chat_id"], request.form["name"]))
+                    (chat_id, name))
         conn.commit()
     return redirect(url_for("dashboard"))
 
@@ -232,6 +250,9 @@ def delete_queue(qid):
                 # Помечаем как ended для триггера auto_switch
                 conn.execute("UPDATE queues SET status='ended' WHERE id=?", (qid,))
         
+        # Обнуляем prev_queue_id у всех очередей, которые ссылаются на удаляемую
+        conn.execute("UPDATE queues SET prev_queue_id=0 WHERE prev_queue_id=?", (qid,))
+        
         conn.execute("DELETE FROM post_log WHERE queue_id=?", (qid,))
         conn.execute("DELETE FROM queues WHERE id=?", (qid,))
         conn.commit()
@@ -286,6 +307,11 @@ def move_queue(qid):
         
         conn.commit()
     return redirect(request.referrer or url_for("queues_list"))
+
+@app.route("/health")
+def health_check():
+    """Health-check endpoint для мониторинга"""
+    return jsonify({"status": "ok", "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")})
 
 from app.telegram import send_text, send_media
 start_scheduler()
