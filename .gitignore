@@ -45,4 +45,3 @@ coverage.xml
 .mypy_cache/
 .pytest_cache/
 ```
-data/poster.db
