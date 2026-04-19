@@ -1,1 +1,29 @@
-Nothing to output - the file changes contain only a modified README.md file, which is a source/config file, and there are no build artifacts, dependencies, or temp files to ignore.
+```
+# Environment variables
+.env
+.env.local
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ENV
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.DS_Store
+```

@@ -14,12 +14,72 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
 app.jinja_env.autoescape = False
 
+# Хранилище настроек в памяти (в будущем можно перенести в БД)
+app_settings = {
+    'bot_token': os.getenv("BOT_TOKEN", ""),
+    'timezone': os.getenv("TZ", "Asia/Yekaterinburg"),
+    'media_path': os.getenv("MEDIA_PATH", "/app/media")
+}
+
 @app.route("/")
 def dashboard():
     with get_conn() as conn:
         channels = [dict(row) for row in conn.execute("SELECT * FROM channels").fetchall()]
         queues = [dict(row) for row in conn.execute("SELECT * FROM queues").fetchall()]
     return render_template("dashboard.html", channels=channels, queues=queues)
+
+@app.route("/settings")
+def settings():
+    """Страница настроек приложения"""
+    with get_conn() as conn:
+        channels = [dict(row) for row in conn.execute("SELECT * FROM channels").fetchall()]
+    
+    # Список популярных часовых поясов
+    timezones = [
+        "UTC", "Europe/Moscow", "Europe/London", "Europe/Berlin", "Europe/Paris",
+        "Asia/Yekaterinburg", "Asia/Omsk", "Asia/Krasnoyarsk", "Asia/Irkutsk",
+        "Asia/Yakutsk", "Asia/Vladivostok", "Asia/Magadan", "Asia/Kamchatka",
+        "America/New_York", "America/Chicago", "America/Los_Angeles",
+        "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore", "Australia/Sydney"
+    ]
+    
+    return render_template("settings.html", 
+                          bot_token=app_settings.get('bot_token', ''),
+                          current_tz=app_settings.get('timezone', 'Asia/Yekaterinburg'),
+                          media_path=app_settings.get('media_path', '/app/media'),
+                          timezones=timezones,
+                          channels=channels)
+
+@app.route("/api/settings/bot_token", methods=["POST"])
+def save_bot_token():
+    """Сохранение токена бота"""
+    token = request.form.get("bot_token", "").strip()
+    if token:
+        app_settings['bot_token'] = token
+        # Обновляем переменную окружения для telegram.py
+        os.environ["BOT_TOKEN"] = token
+        # Перезагружаем модуль telegram чтобы применить новый токен
+        import importlib
+        from app import telegram
+        importlib.reload(telegram)
+    return redirect(url_for("settings"))
+
+@app.route("/api/settings/timezone", methods=["POST"])
+def save_timezone():
+    """Сохранение часового пояса"""
+    tz = request.form.get("timezone", "Asia/Yekaterinburg")
+    app_settings['timezone'] = tz
+    os.environ["TZ"] = tz
+    time.tzset()  # Применяем часовой пояс (работает на Unix)
+    return redirect(url_for("settings"))
+
+@app.route("/api/settings/media_path", methods=["POST"])
+def save_media_path():
+    """Сохранение пути к медиафайлам"""
+    path = request.form.get("media_path", "/app/media")
+    app_settings['media_path'] = path
+    os.environ["MEDIA_PATH"] = path
+    return redirect(url_for("settings"))
 
 @app.route("/api/add_channel", methods=["POST"])
 def add_channel():
