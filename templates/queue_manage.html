@@ -17,17 +17,72 @@
 </div>
 
 <h4>📜 Последние логи</h4>
-<table>
-  <tr><th>Время</th><th>Тип</th><th>Статус</th><th>Ошибка</th></tr>
+<table id="logsTable">
+  <tr>
+    <th onclick="sortTable(0, 'date')">Время ⬍</th>
+    <th onclick="sortTable(1, 'alpha')">Файл ⬍</th>
+    <th onclick="sortTable(2, 'alpha')">Тип ⬍</th>
+    <th onclick="sortTable(3, 'alpha')">Статус ⬍</th>
+    <th>Ошибка</th>
+  </tr>
   {% for log in logs %}
   <tr>
     <td>{{ log.sent_at }}</td>
+    <td>{{ log.filename or '—' }}</td>
     <td>{{ log.file_type }}</td>
     <td class="status-{{ 'active' if log.status=='sent' else 'paused' }}">{{ log.status }}</td>
     <td>{{ log.error or '—' }}</td>
   </tr>
   {% endfor %}
 </table>
+
+<script>
+// Функция сортировки таблицы
+let sortDirections = {};
+
+function sortTable(columnIndex, sortType) {
+  const table = document.getElementById('logsTable');
+  const rows = Array.from(table.querySelectorAll('tr:not(:first-child)'));
+  const header = table.querySelectorAll('th')[columnIndex];
+  
+  // Определяем направление сортировки
+  const currentDirection = sortDirections[columnIndex] || 'asc';
+  const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+  sortDirections[columnIndex] = newDirection;
+  
+  // Обновляем индикатор сортировки в заголовке
+  table.querySelectorAll('th').forEach((th, idx) => {
+    if (idx === columnIndex) {
+      th.textContent = th.textContent.replace(/[⬆⬇⬍]/, '').trim() + (newDirection === 'asc' ? ' ⬆' : ' ⬇');
+    } else {
+      th.textContent = th.textContent.replace(/[⬆⬇]/, '').trim() + ' ⬍';
+    }
+  });
+  
+  // Сортируем строки
+  rows.sort((a, b) => {
+    const aText = a.cells[columnIndex].textContent.trim();
+    const bText = b.cells[columnIndex].textContent.trim();
+    
+    let comparison = 0;
+    
+    if (sortType === 'date') {
+      // Сортировка по дате
+      const aDate = new Date(aText);
+      const bDate = new Date(bText);
+      comparison = aDate - bDate;
+    } else if (sortType === 'alpha') {
+      // Алфавитная сортировка
+      comparison = aText.localeCompare(bText, 'ru');
+    }
+    
+    return newDirection === 'asc' ? comparison : -comparison;
+  });
+  
+  // Переставляем строки в таблице
+  rows.forEach(row => table.appendChild(row));
+}
+</script>
 
 <script>
 function testSend(qid) {
