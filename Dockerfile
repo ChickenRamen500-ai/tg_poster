@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 # Установка системных библиотек для поддержки AVIF
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libavif15 \
+    libavif-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Рабочая директория
