@@ -31,6 +31,8 @@ def get_file_hash(filepath):
 
 def get_files_from_queue(source_path):
     """Возвращает список файлов из папки + всех подпапок (рекурсивно), исключая файлы из sended"""
+    from app.file_scanner import convert_avif_to_jpg, move_file_to_errors
+    
     if not source_path:
         return []
     
@@ -39,14 +41,33 @@ def get_files_from_queue(source_path):
         logger.warning(f"⚠️ Папка не найдена: {path}")
         return []
     
-    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac", ".avif"}
+    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac"}
+    avif_ext = {".avif"}
     
     files = []
     for f in path.rglob("*"):
         # Пропускаем файлы из папки sended - ПРОВЕРЯЕМ ЯВНО ЧТО ЭТО ДОЧЕРНЯЯ ПАПКА
         if BASE_PROCESSED in f.parents:
             continue
-        if f.is_file() and f.suffix.lower() in valid_ext:
+        if not f.is_file():
+            continue
+            
+        suffix = f.suffix.lower()
+        
+        # Обработка AVIF файлов
+        if suffix in avif_ext:
+            logger.info(f"🔄 Найден AVIF файл: {f}, конвертируем в JPG...")
+            jpg_path = convert_avif_to_jpg(f)
+            if jpg_path:
+                logger.info(f"✅ AVIF сконвертирован: {jpg_path}")
+                files.append(jpg_path)
+                # Перемещаем оригинал AVIF в errors
+                move_file_to_errors(str(f), "AVIF конвертирован в JPG")
+                logger.info(f"📁 Оригинал AVIF перемещён в errors")
+            else:
+                logger.error(f"❌ Ошибка конвертации AVIF, перемещаем в errors")
+                move_file_to_errors(str(f), "Ошибка конвертации AVIF в JPG")
+        elif suffix in valid_ext:
             files.append(str(f))
     
     return sorted(files)  # Сортируем для консистентности
@@ -339,16 +360,20 @@ def process_queues():
                 # Перемещаем файл в errors при критических ошибках (не 429)
                 if err and "Rate limit" not in err and "429" not in str(err):
                     move_to_error(filepath, q["source_path"], err)
+                    # Отправляем уведомление об ошибке
+                    from app.telegram import send_notification_to_users
+                    error_msg = f"❌ Ошибка отправки файла\n\n📁 Файл: {Path(filepath).name}\n📮 Очередь: {q['name']}\n📡 Канал: {ch['name']}\n\nОшибка: {err}"
+                    send_notification_to_users(error_msg)
             
             status = "sent" if success else "error"
             
             # Логируем - используем уже вычисленный хэш
             conn.execute("""
-                INSERT INTO post_log (queue_id, channel_name, file_type, scheduled_at, sent_at, status, error, file_hash)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO post_log (queue_id, channel_name, file_type, scheduled_at, sent_at, status, error, file_hash, filename)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (q["id"], ch["name"], Path(filepath).suffix, 
                   time.strftime("%Y-%m-%d %H:%M:%S"), time.strftime("%Y-%m-%d %H:%M:%S"), 
-                  status, err, file_hash))
+                  status, err, file_hash, Path(filepath).name))
             
             conn.commit()
             

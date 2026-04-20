@@ -35,25 +35,15 @@ def dashboard():
 @app.route("/settings")
 def settings():
     """Страница настроек приложения"""
-    with get_conn() as conn:
-        channels = [dict(row) for row in conn.execute("SELECT * FROM channels").fetchall()]
+    from app.db import get_allowed_users
     
-    # Список популярных часовых поясов
-    timezones = [
-        "UTC", "Europe/Moscow", "Europe/London", "Europe/Berlin", "Europe/Paris",
-        "Asia/Yekaterinburg", "Asia/Omsk", "Asia/Krasnoyarsk", "Asia/Irkutsk",
-        "Asia/Yakutsk", "Asia/Vladivostok", "Asia/Magadan", "Asia/Kamchatka",
-        "America/New_York", "America/Chicago", "America/Los_Angeles",
-        "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore", "Australia/Sydney"
-    ]
-    
-    return render_template("settings.html", 
+    return render_template("settings.html",
                           bot_token=app_settings.get('bot_token', ''),
                           current_tz=app_settings.get('timezone', 'Asia/Yekaterinburg'),
                           media_path=app_settings.get('media_path', '/app/media'),
                           timezones=timezones,
-                          channels=channels)
-
+                          channels=channels,
+                          allowed_users=allowed_users)
 @app.route("/api/settings/bot_token", methods=["POST"])
 def save_bot_token():
     """Сохранение токена бота"""

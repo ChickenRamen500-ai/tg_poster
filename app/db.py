@@ -28,6 +28,45 @@ def save_setting(key, value):
         """, (key, value))
         conn.commit()
 
+def get_allowed_users():
+    """Получает список разрешённых user_id для уведомлений"""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT value FROM settings WHERE key LIKE 'allowed_user_%'").fetchall()
+        return [row["value"] for row in rows]
+
+def add_allowed_user(user_id):
+    """Добавляет разрешённого user_id"""
+    with get_conn() as conn:
+        # Проверяем, нет ли уже такого пользователя
+        existing = conn.execute("SELECT value FROM settings WHERE key LIKE 'allowed_user_%' AND value=?", (user_id,)).fetchone()
+        if not existing:
+            # Находим следующий доступный ключ
+            max_idx = conn.execute("SELECT MAX(CAST(SUBSTR(key, 15) AS INTEGER)) FROM settings WHERE key LIKE 'allowed_user_%'").fetchone()[0]
+            next_idx = (max_idx or 0) + 1
+            conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (f"allowed_user_{next_idx}", str(user_id)))
+            conn.commit()
+            return True
+    return False
+
+def remove_allowed_user(user_id):
+    """Удаляет разрешённого user_id"""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM settings WHERE key LIKE 'allowed_user_%' AND value=?", (user_id,))
+        conn.commit()
+
+def clear_sent_files_for_channel(channel_id):
+    """Очищает логи отправленных файлов для канала"""
+    with get_conn() as conn:
+        # Получаем все очереди этого канала
+        queues = conn.execute("SELECT id FROM queues WHERE channel_id=?", (channel_id,)).fetchall()
+        queue_ids = [q["id"] for q in queues]
+        if queue_ids:
+            placeholders = ','.join('?' * len(queue_ids))
+            conn.execute(f"DELETE FROM post_log WHERE queue_id IN ({placeholders})", queue_ids)
+            conn.commit()
+            return len(queue_ids)
+    return 0
+
 def init_db():
     """Создание таблиц если они не существуют (без сброса данных)"""
     ensure_db_dir()
@@ -72,6 +111,7 @@ def init_db():
             status TEXT,
             error TEXT,
             file_hash TEXT,
+            filename TEXT,
             FOREIGN KEY (queue_id) REFERENCES queues(id)
         )""")
         
