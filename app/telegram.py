@@ -197,7 +197,7 @@ def send_image_as_document(chat_id, file_path, caption=""):
 
 def send_media(chat_id, file_path, caption=""):
     """
-    Отправляет файл (фото/видео/документ) в канал.
+    Отправляет файл (фото/видео/аудио/документ) в канал.
     
     Для изображений >2MB: сначала отправляет сжатое фото, затем (через паузу) оригинал как документ.
     Возвращает кортеж (success, error, sent_as_document) где sent_as_document=True если была двойная отправка.
@@ -287,7 +287,14 @@ def send_media(chat_id, file_path, caption=""):
     elif ext in [".mp4", ".webm", ".mkv"]:
         method = "sendVideo"
         file_key = "video"
-    elif ext in [".avif"]:
+    elif ext in [".mp3"]:
+        method = "sendAudio"
+        file_key = "audio"
+    elif ext in [".wav", ".ogg", ".flac"]:
+        # FLAC, WAV, OGG отправляем как документ (Telegram не поддерживает их в sendAudio)
+        logger.info(f"🎵 Аудиофайл {ext} будет отправлен как документ")
+        return send_image_as_document(chat_id, file_path, caption)
+    elif ext == ".avif":
         # AVIF НЕ поддерживается Telegram напрямую - отправляем как документ
         logger.info(f"📎 AVIF файл будет отправлен как документ (Telegram не поддерживает AVIF в sendPhoto)")
         return send_image_as_document(chat_id, file_path, caption)
