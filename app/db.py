@@ -32,7 +32,7 @@ def get_allowed_users():
     """Получает список разрешённых user_id для уведомлений"""
     with get_conn() as conn:
         rows = conn.execute("SELECT value FROM settings WHERE key LIKE 'allowed_user_%'").fetchall()
-        return [row["value"] for row in rows]
+        return [{"user_id": row["value"]} for row in rows]
 
 def add_allowed_user(user_id):
     """Добавляет разрешённого user_id"""

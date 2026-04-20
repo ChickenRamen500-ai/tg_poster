@@ -37,6 +37,17 @@ def settings():
     """Страница настроек приложения"""
     from app.db import get_allowed_users
     
+    with get_conn() as conn:
+        channels = [dict(row) for row in conn.execute("SELECT * FROM channels").fetchall()]
+        allowed_users = get_allowed_users()
+    
+    # Список часовых поясов
+    timezones = [
+        'UTC', 'Europe/Moscow', 'Asia/Yekaterinburg', 'Asia/Novosibirsk', 
+        'Asia/Vladivostok', 'Asia/Kamchatka', 'America/New_York', 'America/Los_Angeles',
+        'Europe/London', 'Europe/Berlin', 'Asia/Tokyo', 'Asia/Shanghai', 'Australia/Sydney'
+    ]
+    
     return render_template("settings.html",
                           bot_token=app_settings.get('bot_token', ''),
                           current_tz=app_settings.get('timezone', 'Asia/Yekaterinburg'),
@@ -131,6 +142,47 @@ def delete_channel(cid):
         conn.execute("DELETE FROM channels WHERE id=?", (cid,))
         conn.commit()
     return redirect(request.referrer or url_for("queues_list"))
+
+@app.route("/api/channel/<int:cid>/clear_history", methods=["POST"])
+def clear_channel_history(cid):
+    """Очистка истории отправленных файлов для канала"""
+    from app.db import clear_sent_files_for_channel
+    
+    with get_conn() as conn:
+        # Проверяем существование канала
+        channel = conn.execute("SELECT name FROM channels WHERE id=?", (cid,)).fetchone()
+        if not channel:
+            return jsonify({"success": False, "error": "Канал не найден"}), 404
+        
+        # Очищаем историю
+        clear_sent_files_for_channel(cid)
+        
+    return jsonify({"success": True, "message": f"История канала '{channel['name']}' очищена"})
+
+@app.route("/api/add_allowed_user", methods=["POST"])
+def add_allowed_user():
+    """Добавление разрешённого пользователя"""
+    from app.db import add_allowed_user
+    
+    user_id = request.form.get("user_id", "").strip()
+    if not user_id:
+        return jsonify({"success": False, "error": "User ID не указан"}), 400
+    
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return jsonify({"success": False, "error": "User ID должен быть числом"}), 400
+    
+    add_allowed_user(user_id)
+    return redirect(url_for("settings"))
+
+@app.route("/api/remove_allowed_user/<int:user_id>", methods=["POST"])
+def remove_allowed_user_route(user_id):
+    """Удаление разрешённого пользователя"""
+    from app.db import remove_allowed_user
+    
+    remove_allowed_user(user_id)
+    return redirect(url_for("settings"))
 
 @app.route("/queues")
 def queues_list():
