@@ -53,9 +53,15 @@ def validate_chat(chat_id):
             return False, "Неверный формат chat_id."
         else:
             return False, f"HTTP ошибка: {e}"
+    except requests.exceptions.Timeout as e:
+        logger.error(f"❌ Ошибка проверки чата: таймаут подключения")
+        return False, "Таймаут подключения к Telegram API. Проверьте интернет-соединение."
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"❌ Ошибка проверки чата: ошибка подключения")
+        return False, "Не удалось подключиться к Telegram API. Проверьте интернет-соединение."
     except Exception as e:
         logger.error(f"❌ Ошибка проверки чата: {e}")
-        return False, str(e)
+        return False, f"Ошибка подключения: {type(e).__name__}"
 
 def handle_rate_limit(response_json):
     """

@@ -104,7 +104,7 @@ def add_channel():
     if not success:
         return jsonify({
             "success": False, 
-            "error": f"Не удалось подключиться к каналу: {err}. Убедитесь, что бот добавлен в канал как администратор."
+            "error": err
         }), 400
     
     with get_conn() as conn:

@@ -33,7 +33,7 @@
   {% endfor %}
 </table>
 
-<form action="/api/add_channel" method="post" style="margin-top:20px; background:#2d2d2d; padding:15px; border-radius:8px">
+<form id="addChannelForm" style="margin-top:20px; background:#2d2d2d; padding:15px; border-radius:8px">
   <h4>➕ Добавить канал</h4>
   <input name="chat_id" placeholder="@channelname или -100..." required style="width:250px">
   <input name="name" placeholder="Название канала" required style="width:200px">
@@ -86,8 +86,30 @@ function deleteChannel(channelId, channelName) {
   }
 }
 
-// Обрабатываем отправку формы редактирования канала через AJAX
+// Обрабатываем отправку формы добавления канала через AJAX
 document.addEventListener('DOMContentLoaded', function() {
+  var addForm = document.getElementById('addChannelForm');
+  if (addForm) {
+    addForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var formData = new FormData(addForm);
+      fetch('/api/add_channel', {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Ошибка: ' + data.error);
+        }
+      })
+      .catch(err => alert('Ошибка сети: ' + err));
+    });
+  }
+  
+  // Обрабатываем отправку формы редактирования канала через AJAX
   var editForm = document.getElementById('editChannelForm');
   if (editForm) {
     editForm.addEventListener('submit', function(e) {
