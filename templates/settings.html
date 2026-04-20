@@ -1,0 +1,156 @@
+# Страница настроек TG Poster
+{% extends "base.html" %}
+{% block content %}
+<h3>⚙️ Настройки приложения</h3>
+
+<!-- Секция: Токен бота -->
+<div style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
+  <h4>🤖 Telegram Bot Token</h4>
+  <p style="color:#aaa; font-size:0.9em; margin-bottom:10px">
+    Токен вашего бота для работы с Telegram API. 
+    Получите токен у <a href="https://t.me/BotFather" target="_blank">@BotFather</a>.
+  </p>
+  <form action="/api/settings/bot_token" method="post">
+    <input type="text" name="bot_token" placeholder="Введите токен бота" value="{{ bot_token or '' }}" 
+           style="width:400px; padding:8px; border-radius:4px; border:1px solid #444; background:#1a1a1a; color:#eee">
+    <button type="submit" class="btn" style="margin-left:10px">💾 Сохранить</button>
+  </form>
+  {% if bot_token %}
+    <p style="color:#4CAF50; margin-top:10px">✅ Токен установлен</p>
+  {% else %}
+    <p style="color:#f44336; margin-top:10px">❌ Токен не установлен</p>
+  {% endif %}
+</div>
+
+<!-- Секция: Часовой пояс -->
+<div style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
+  <h4>🕐 Часовой пояс</h4>
+  <p style="color:#aaa; font-size:0.9em; margin-bottom:10px">
+    Используется для расписания публикаций и отображения времени в логах.
+  </p>
+  <form action="/api/settings/timezone" method="post">
+    <select name="timezone" style="width:250px; padding:8px; border-radius:4px; border:1px solid #444; background:#1a1a1a; color:#eee">
+      {% for tz in timezones %}
+        <option value="{{ tz }}" {% if tz == current_tz %}selected{% endif %}>{{ tz }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn" style="margin-left:10px">💾 Сохранить</button>
+  </form>
+  <p style="color:#aaa; font-size:0.9em; margin-top:10px">Текущий: <strong>{{ current_tz }}</strong></p>
+</div>
+
+<!-- Секция: Пути к файлам -->
+<div style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
+  <h4>📁 Пути к файлам</h4>
+  <p style="color:#aaa; font-size:0.9em; margin-bottom:10px">
+    Базовая папка для медиафайлов. Все очереди используют пути относительно этой директории.
+  </p>
+  <form action="/api/settings/media_path" method="post">
+    <input type="text" name="media_path" placeholder="/app/media" value="{{ media_path or '/app/media' }}" 
+           style="width:400px; padding:8px; border-radius:4px; border:1px solid #444; background:#1a1a1a; color:#eee">
+    <button type="submit" class="btn" style="margin-left:10px">💾 Сохранить</button>
+  </form>
+  <p style="color:#aaa; font-size:0.9em; margin-top:10px">Текущий путь: <strong>{{ media_path or '/app/media' }}</strong></p>
+</div>
+
+<!-- Секция: Управление каналами -->
+<div style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px">
+  <h4>📺 Управление каналами</h4>
+  <p style="color:#aaa; font-size:0.9em; margin-bottom:10px">
+    Редактирование и удаление каналов. Для добавления нового используйте главную панель.
+  </p>
+  
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Название</th>
+      <th>Chat ID</th>
+      <th>Действия</th>
+    </tr>
+    {% for ch in channels %}
+    <tr>
+      <td>{{ ch.id }}</td>
+      <td>{{ ch.name }}</td>
+      <td>{{ ch.chat_id }}</td>
+      <td>
+        <button onclick="openEditChannel({{ ch.id }}, '{{ ch.name }}', '{{ ch.chat_id }}')" class="btn" style="background:#FF9800">✏️</button>
+        <button onclick="deleteChannel({{ ch.id }}, '{{ ch.name }}')" class="btn" style="background:#f44336; margin-left:5px">🗑</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  
+  <a href="/" class="btn" style="margin-top:15px; display:inline-block">📋 Добавить канал</a>
+</div>
+
+<!-- Модальное окно редактирования канала -->
+<div id="editChannelModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#2d2d2d; padding:20px; border-radius:8px; min-width:300px">
+    <h4>✏️ Редактировать канал</h4>
+    <form id="editChannelForm" method="post">
+      <input type="hidden" name="channel_id" id="edit_channel_id">
+      <div style="margin-bottom:10px">
+        <label>Название:</label><br>
+        <input name="name" id="edit_name" required style="width:100%; margin-top:5px; padding:8px; border-radius:4px; border:1px solid #444; background:#1a1a1a; color:#eee">
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Chat ID / Ссылка:</label><br>
+        <input name="chat_id" id="edit_chat_id" required style="width:100%; margin-top:5px; padding:8px; border-radius:4px; border:1px solid #444; background:#1a1a1a; color:#eee">
+      </div>
+      <button type="submit" class="btn" style="background:#4CAF50">Сохранить</button>
+      <button type="button" onclick="closeEditChannel()" class="btn" style="background:#666; margin-left:10px">Отмена</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEditChannel(channelId, channelName, channelChatId) {
+  document.getElementById('edit_channel_id').value = channelId;
+  document.getElementById('edit_name').value = channelName;
+  document.getElementById('edit_chat_id').value = channelChatId;
+  document.getElementById('editChannelForm').action = '/api/edit_channel/' + channelId;
+  document.getElementById('editChannelModal').style.display = 'block';
+}
+
+function closeEditChannel() {
+  document.getElementById('editChannelModal').style.display = 'none';
+}
+
+function deleteChannel(channelId, channelName) {
+  if (confirm('Вы уверены, что хотите удалить канал "' + channelName + '"? Это действие необратимо!')) {
+    fetch('/api/delete_channel/' + channelId, {method: 'POST'})
+      .then(r => {
+        if (r.ok) {
+          location.reload();
+        } else {
+          r.json().then(data => alert('Ошибка: ' + data.error));
+        }
+      });
+  }
+}
+
+// Обрабатываем отправку формы редактирования канала через AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  var editForm = document.getElementById('editChannelForm');
+  if (editForm) {
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var formData = new FormData(editForm);
+      fetch(editForm.action, {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Ошибка: ' + data.error);
+        }
+      })
+      .catch(err => alert('Ошибка сети: ' + err));
+    });
+  }
+});
+</script>
+{% endblock %}

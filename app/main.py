@@ -1,14 +1,29 @@
 # app/main.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify
-from app.db import get_conn
+from app.db import get_conn, get_setting, save_setting
 from app.scheduler import start_scheduler, get_files_from_queue
 from app.file_scanner import get_folders_list
 import os, time, json, datetime
 from pathlib import Path
 
+# Настройка логирования
+from logging_config import setup_logging
+setup_logging()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
 app.jinja_env.autoescape = False
+
+# Загружаем настройки из БД при старте
+def load_app_settings():
+    """Загрузка настроек из БД или переменных окружения"""
+    return {
+        'bot_token': get_setting('bot_token', os.getenv("BOT_TOKEN", "")),
+        'timezone': get_setting('timezone', os.getenv("TZ", "Asia/Yekaterinburg")),
+        'media_path': get_setting('media_path', os.getenv("MEDIA_PATH", "/app/media"))
+    }
+
+app_settings = load_app_settings()
 
 @app.route("/")
 def dashboard():
@@ -17,11 +32,84 @@ def dashboard():
         queues = [dict(row) for row in conn.execute("SELECT * FROM queues").fetchall()]
     return render_template("dashboard.html", channels=channels, queues=queues)
 
+@app.route("/settings")
+def settings():
+    """Страница настроек приложения"""
+    with get_conn() as conn:
+        channels = [dict(row) for row in conn.execute("SELECT * FROM channels").fetchall()]
+    
+    # Список популярных часовых поясов
+    timezones = [
+        "UTC", "Europe/Moscow", "Europe/London", "Europe/Berlin", "Europe/Paris",
+        "Asia/Yekaterinburg", "Asia/Omsk", "Asia/Krasnoyarsk", "Asia/Irkutsk",
+        "Asia/Yakutsk", "Asia/Vladivostok", "Asia/Magadan", "Asia/Kamchatka",
+        "America/New_York", "America/Chicago", "America/Los_Angeles",
+        "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore", "Australia/Sydney"
+    ]
+    
+    return render_template("settings.html", 
+                          bot_token=app_settings.get('bot_token', ''),
+                          current_tz=app_settings.get('timezone', 'Asia/Yekaterinburg'),
+                          media_path=app_settings.get('media_path', '/app/media'),
+                          timezones=timezones,
+                          channels=channels)
+
+@app.route("/api/settings/bot_token", methods=["POST"])
+def save_bot_token():
+    """Сохранение токена бота"""
+    token = request.form.get("bot_token", "").strip()
+    if token:
+        app_settings['bot_token'] = token
+        # Сохраняем в БД для персистентности
+        save_setting('bot_token', token)
+        # Обновляем переменную окружения для telegram.py
+        os.environ["BOT_TOKEN"] = token
+        # Перезагружаем модуль telegram чтобы применить новый токен
+        import importlib
+        from app import telegram
+        importlib.reload(telegram)
+    return redirect(url_for("settings"))
+
+@app.route("/api/settings/timezone", methods=["POST"])
+def save_timezone():
+    """Сохранение часового пояса"""
+    tz = request.form.get("timezone", "Asia/Yekaterinburg")
+    app_settings['timezone'] = tz
+    # Сохраняем в БД для персистентности
+    save_setting('timezone', tz)
+    os.environ["TZ"] = tz
+    time.tzset()  # Применяем часовой пояс (работает на Unix)
+    return redirect(url_for("settings"))
+
+@app.route("/api/settings/media_path", methods=["POST"])
+def save_media_path():
+    """Сохранение пути к медиафайлам"""
+    path = request.form.get("media_path", "/app/media")
+    app_settings['media_path'] = path
+    # Сохраняем в БД для персистентности
+    save_setting('media_path', path)
+    os.environ["MEDIA_PATH"] = path
+    return redirect(url_for("settings"))
+
 @app.route("/api/add_channel", methods=["POST"])
 def add_channel():
+    """Добавление канала с валидацией chat_id через getChat API"""
+    from app.telegram import validate_chat
+    
+    chat_id = request.form["chat_id"]
+    name = request.form["name"]
+    
+    # Проверяем, существует ли канал и добавлен ли бот через getChat
+    success, err = validate_chat(chat_id)
+    if not success:
+        return jsonify({
+            "success": False, 
+            "error": f"Не удалось подключиться к каналу: {err}. Убедитесь, что бот добавлен в канал как администратор."
+        }), 400
+    
     with get_conn() as conn:
         conn.execute("INSERT OR IGNORE INTO channels (chat_id, name) VALUES (?,?)", 
-                    (request.form["chat_id"], request.form["name"]))
+                    (chat_id, name))
         conn.commit()
     return redirect(url_for("dashboard"))
 
@@ -232,6 +320,9 @@ def delete_queue(qid):
                 # Помечаем как ended для триггера auto_switch
                 conn.execute("UPDATE queues SET status='ended' WHERE id=?", (qid,))
         
+        # Обнуляем prev_queue_id у всех очередей, которые ссылаются на удаляемую
+        conn.execute("UPDATE queues SET prev_queue_id=0 WHERE prev_queue_id=?", (qid,))
+        
         conn.execute("DELETE FROM post_log WHERE queue_id=?", (qid,))
         conn.execute("DELETE FROM queues WHERE id=?", (qid,))
         conn.commit()
@@ -286,6 +377,11 @@ def move_queue(qid):
         
         conn.commit()
     return redirect(request.referrer or url_for("queues_list"))
+
+@app.route("/health")
+def health_check():
+    """Health-check endpoint для мониторинга"""
+    return jsonify({"status": "ok", "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")})
 
 from app.telegram import send_text, send_media
 start_scheduler()
