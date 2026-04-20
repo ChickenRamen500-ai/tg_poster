@@ -14,7 +14,6 @@ COPY . .
 ENV PYTHONPATH=/app
 
 # Переменные окружения (можно переопределить в docker-compose)
-ENV BOT_TOKEN=7645199777:AAGsqPXgyd-IWPTX-S7sAOPPDydSkXwmXVI
 ENV TZ=Asia/Yekaterinburg
 
 # Запуск через -m, чтобы Python правильно разрешал импорты пакетов
