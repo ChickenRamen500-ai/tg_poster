@@ -112,7 +112,9 @@ def add_channel():
         conn.execute("INSERT OR IGNORE INTO channels (chat_id, name) VALUES (?,?)", 
                     (chat_id, name))
         conn.commit()
-    return redirect(url_for("dashboard"))
+    
+    # Возвращаем JSON вместо redirect для корректной обработки в JS
+    return jsonify({"success": True, "redirect": url_for("dashboard")})
 
 @app.route("/api/edit_channel/<int:cid>", methods=["POST"])
 def edit_channel(cid):
@@ -276,6 +278,16 @@ def add_queue():
         end = "2099-12-31 23:59"
     elif not start:
         start = time.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Валидация: дата окончания не должна быть раньше даты начала
+    if start and end:
+        try:
+            start_dt = datetime.datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+            end_dt = datetime.datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+            if end_dt < start_dt:
+                return jsonify({"success": False, "error": "Дата окончания не может быть раньше даты начала"}), 400
+        except ValueError:
+            pass  # Игнорируем ошибки парсинга, используем значения как есть
     
     with get_conn() as conn:
         # Определяем статус: если время в будущем — pending, иначе queued

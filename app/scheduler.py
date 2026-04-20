@@ -41,8 +41,12 @@ def get_files_from_queue(source_path):
         logger.warning(f"⚠️ Папка не найдена: {path}")
         return []
     
-    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".flac"}
+    # Расширения для всех типов файлов
+    image_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
     avif_ext = {".avif"}
+    video_ext = {".mp4", ".webm", ".mkv"}
+    audio_ext = {".mp3", ".wav", ".ogg", ".flac"}
+    # Все остальные файлы принимаем (документы и т.д.)
     
     files = []
     for f in path.rglob("*"):
@@ -67,7 +71,8 @@ def get_files_from_queue(source_path):
             else:
                 logger.error(f"❌ Ошибка конвертации AVIF, перемещаем в errors")
                 move_file_to_errors(str(f), "Ошибка конвертации AVIF в JPG")
-        elif suffix in valid_ext:
+        # Все остальные файлы добавляем как есть
+        elif suffix in image_ext or suffix in video_ext or suffix in audio_ext or True:
             files.append(str(f))
     
     return sorted(files)  # Сортируем для консистентности
