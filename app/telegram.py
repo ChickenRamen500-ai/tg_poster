@@ -19,6 +19,9 @@ PHOTO_MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 DOCUMENT_MAX_SIZE = 50 * 1024 * 1024  # 50 MB
 IMAGE_COMPRESS_THRESHOLD = 2 * 1024 * 1024  # 2 MB - порог для сжатия изображений
 
+# Поддерживаемые форматы изображений для sendPhoto
+SUPPORTED_IMAGE_FORMATS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
 # Максимальное количество повторных попыток при ошибке 429
 MAX_RETRIES = 3
 BASE_RETRY_DELAY = 5  # Базовая задержка между попытками (секунды)
@@ -172,7 +175,7 @@ def send_media(chat_id, file_path, caption=""):
     file_size = get_file_size(file_path)
     
     # Проверка лимитов
-    if ext in [".jpg", ".jpeg", ".png", ".avif"] and file_size > PHOTO_MAX_SIZE:
+    if ext in SUPPORTED_IMAGE_FORMATS and file_size > PHOTO_MAX_SIZE:
         logger.warning(f"⚠️ Фото превышает лимит 10MB ({file_size} байт). Отправляем как документ.")
         return send_image_as_document(chat_id, file_path, caption)
     
@@ -250,9 +253,9 @@ def send_media(chat_id, file_path, caption=""):
         method = "sendVideo"
         file_key = "video"
     elif ext in [".avif"]:
-        # AVIF поддерживается Telegram как изображение
-        method = "sendPhoto"
-        file_key = "photo"
+        # AVIF НЕ поддерживается Telegram напрямую - отправляем как документ
+        logger.info(f"📎 AVIF файл будет отправлен как документ (Telegram не поддерживает AVIF в sendPhoto)")
+        return send_image_as_document(chat_id, file_path, caption)
     else:
         method = "sendDocument"
         file_key = "document"
