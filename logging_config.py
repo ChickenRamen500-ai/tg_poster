@@ -4,13 +4,14 @@ import os
 from logging.handlers import RotatingFileHandler
 
 def setup_logging():
-    """Настройка логирования с выводом в файл и консоль"""
+    """Настройка логирования с выводом в файл и консоль, ERROR - в отдельный файл"""
     
     # Создаём директорию для логов
     log_dir = os.getenv("LOG_DIR", "/app/logs")
     os.makedirs(log_dir, exist_ok=True)
     
     log_file = os.path.join(log_dir, "poster.log")
+    error_log_file = os.path.join(log_dir, "poster_error.log")
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     
     # Создаём logger
@@ -26,7 +27,7 @@ def setup_logging():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # File handler с ротацией (10MB, 5 файлов)
+    # File handler для всех логов с ротацией (10MB, 5 файлов)
     file_handler = RotatingFileHandler(
         log_file, 
         maxBytes=10*1024*1024, 
@@ -34,11 +35,24 @@ def setup_logging():
         encoding='utf-8'
     )
     file_handler.setFormatter(formatter)
+    file_handler.setLevel(getattr(logging, log_level, logging.INFO))
     logger.addHandler(file_handler)
+    
+    # Отдельный File handler для ERROR и CRITICAL логов
+    error_handler = RotatingFileHandler(
+        error_log_file,
+        maxBytes=10*1024*1024,
+        backupCount=5,
+        encoding='utf-8'
+    )
+    error_handler.setFormatter(formatter)
+    error_handler.setLevel(logging.ERROR)
+    logger.addHandler(error_handler)
     
     # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
+    console_handler.setLevel(getattr(logging, log_level, logging.INFO))
     logger.addHandler(console_handler)
     
-    logging.info(f"📝 Логирование настроено: {log_file} (уровень: {log_level})")
+    logging.info(f"📝 Логирование настроено: {log_file}, ошибки: {error_log_file} (уровень: {log_level})")
