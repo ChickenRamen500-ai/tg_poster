@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Пути внутри контейнера (с поддержкой переменных окружения)
 BASE_MEDIA = Path(os.getenv("MEDIA_PATH", "/app/media"))
 BASE_PROCESSED = Path(os.getenv("MEDIA_PATH", "/app/media")) / "sended"
+BASE_ERRORS = Path(os.getenv("MEDIA_PATH", "/app/media")) / "errors"
 
 def get_file_hash(filepath):
     """Вычисляет MD5-хэш файла для дедупликации"""
@@ -114,6 +115,33 @@ def move_to_sended(filepath, source_path):
             return True
     except Exception as e:
         logger.error(f"⚠️ Не удалось переместить: {e}")
+    return False
+
+def move_to_error(filepath, source_path, error_msg=""):
+    """Перемещает проблемный файл в /app/media/errors с сохранением структуры и записью ошибки"""
+    try:
+        file_path = Path(filepath)
+        rel_path = file_path.relative_to(BASE_MEDIA)
+        dest = BASE_ERRORS / rel_path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        
+        if file_path.exists() and not dest.exists():
+            file_path.rename(dest)
+            logger.warning(f"⚠️ Перемещено в errors: {dest} (ошибка: {error_msg})")
+            
+            # Записываем информацию об ошибке в .txt файл рядом
+            error_info_path = dest.with_suffix(dest.suffix + ".error.txt")
+            with open(error_info_path, "w", encoding="utf-8") as f:
+                f.write(f"Файл: {filepath}\n")
+                f.write(f"Ошибка: {error_msg}\n")
+                f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            
+            return True
+        elif dest.exists():
+            logger.warning(f"⚠️ Файл уже существует в errors: {dest}")
+            return True
+    except Exception as e:
+        logger.error(f"⚠️ Не удалось переместить в errors: {e}")
     return False
 
 def auto_switch_queues():
@@ -305,8 +333,12 @@ def process_queues():
             
             if success:
                 logger.info(f"    ✅ Успешно отправлено!")
+                move_to_sended(filepath, q["source_path"])
             else:
                 logger.error(f"    ❌ Ошибка: {err}")
+                # Перемещаем файл в errors при критических ошибках (не 429)
+                if err and "Rate limit" not in err and "429" not in str(err):
+                    move_to_error(filepath, q["source_path"], err)
             
             status = "sent" if success else "error"
             
@@ -317,9 +349,6 @@ def process_queues():
             """, (q["id"], ch["name"], Path(filepath).suffix, 
                   time.strftime("%Y-%m-%d %H:%M:%S"), time.strftime("%Y-%m-%d %H:%M:%S"), 
                   status, err, file_hash))
-            
-            if success:
-                move_to_sended(filepath, q["source_path"])
             
             conn.commit()
             
