@@ -42,7 +42,8 @@ def send_notification_to_users(message):
         return False
     
     success_count = 0
-    for user_id in allowed_users:
+    for user in allowed_users:
+        user_id = user.get('user_id') if isinstance(user, dict) else user
         try:
             result = send_text(user_id, message)
             if result[0]:
@@ -234,7 +235,7 @@ def send_media(chat_id, file_path, caption=""):
                         data["caption"] = caption
                         data["parse_mode"] = "HTML"
                     
-                    resp = requests.post(photo_url, data=data, files=files, timeout=60)
+                    resp = requests.post(photo_url, data=data, files=files, timeout=120)
                     resp.raise_for_status()
                     result = resp.json()
                     
@@ -304,6 +305,9 @@ def send_media(chat_id, file_path, caption=""):
     
     url = f"{API_BASE}/{method}"
     
+    # Увеличенный таймаут для больших файлов (особенно FLAC, MP3)
+    request_timeout = 120 if file_size > 5 * 1024 * 1024 else 60
+    
     # Отправка файла с retry logic
     for attempt in range(MAX_RETRIES):
         try:
@@ -314,7 +318,7 @@ def send_media(chat_id, file_path, caption=""):
                     data["caption"] = caption
                     data["parse_mode"] = "HTML"
                 
-                resp = requests.post(url, data=data, files=files, timeout=60)
+                resp = requests.post(url, data=data, files=files, timeout=request_timeout)
                 resp.raise_for_status()
                 result = resp.json()
                 
@@ -327,6 +331,11 @@ def send_media(chat_id, file_path, caption=""):
                 
                 logger.info(f"✅ Файл {file_path} отправлен как {method}")
                 return True, None, (ext in [".jpg", ".jpeg", ".png"] and file_size > IMAGE_COMPRESS_THRESHOLD)
+        except requests.exceptions.Timeout as e:
+            logger.error(f"⏱ Таймаут отправки файла (попытка {attempt+1}): {e}")
+            if attempt == MAX_RETRIES - 1:
+                return False, f"Timeout: {str(e)}", False
+            time.sleep(5)  # Пауза перед повторной попыткой
         except requests.exceptions.HTTPError as e:
             try:
                 result = e.response.json()

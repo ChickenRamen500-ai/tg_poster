@@ -83,7 +83,7 @@ def move_file_to_errors(filepath, error_msg=""):
     return False
 
 def get_files_in_path(folder_name, subfolder=None):
-    """Возвращает список файлов из указанной папки. AVIF конвертируется в JPG, оригинал перемещается в errors."""
+    """Возвращает список файлов из указанной папки. Поддерживает все типы файлов."""
     path = BASE_MEDIA / folder_name
     if subfolder:
         path = path / subfolder
@@ -91,8 +91,12 @@ def get_files_in_path(folder_name, subfolder=None):
     if not path.exists():
         return []
     
-    valid_ext = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".webm", ".mkv"}
-    avif_ext = {".avif"}
+    # Расширения изображений и видео
+    image_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
+    video_ext = {".mp4", ".webm", ".mkv"}
+    audio_ext = {".mp3", ".wav", ".ogg", ".flac"}
+    # Все остальные файлы (документы и т.д.)
+    other_ext = set()  # Принимаем любые другие расширения
     
     result_files = []
     
@@ -102,8 +106,8 @@ def get_files_in_path(folder_name, subfolder=None):
         
         suffix = f.suffix.lower()
         
-        # Обработка AVIF файлов
-        if suffix in avif_ext:
+        # Обработка AVIF файлов - конвертируем в JPG
+        if suffix == ".avif":
             print(f"🔄 Найден AVIF файл: {f}, конвертируем в JPG...")
             jpg_path = convert_avif_to_jpg(f)
             if jpg_path:
@@ -115,7 +119,8 @@ def get_files_in_path(folder_name, subfolder=None):
             else:
                 print(f"❌ Ошибка конвертации AVIF, перемещаем в errors")
                 move_file_to_errors(str(f), "Ошибка конвертации AVIF в JPG")
-        elif suffix in valid_ext:
+        # Все остальные файлы добавляем как есть
+        elif suffix in image_ext or suffix in video_ext or suffix in audio_ext or True:
             result_files.append(str(f))
     
     return result_files

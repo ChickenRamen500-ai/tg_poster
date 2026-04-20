@@ -38,14 +38,26 @@ def add_allowed_user(user_id):
     """Добавляет разрешённого user_id"""
     with get_conn() as conn:
         # Проверяем, нет ли уже такого пользователя
-        existing = conn.execute("SELECT value FROM settings WHERE key LIKE 'allowed_user_%' AND value=?", (user_id,)).fetchone()
-        if not existing:
-            # Находим следующий доступный ключ
-            max_idx = conn.execute("SELECT MAX(CAST(SUBSTR(key, 15) AS INTEGER)) FROM settings WHERE key LIKE 'allowed_user_%'").fetchone()[0]
-            next_idx = (max_idx or 0) + 1
-            conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (f"allowed_user_{next_idx}", str(user_id)))
-            conn.commit()
-            return True
+        existing = conn.execute("SELECT key, value FROM settings WHERE key LIKE 'allowed_user_%' AND value=?", (user_id,)).fetchone()
+        if existing:
+            return False  # Уже существует
+        
+        # Находим следующий доступный ключ
+        # LENGTH('allowed_user_') = 13, поэтому используем SUBSTR(key, 14)
+        max_idx = conn.execute("SELECT MAX(CAST(SUBSTR(key, 14) AS INTEGER)) FROM settings WHERE key LIKE 'allowed_user_%'").fetchone()[0]
+        next_idx = (max_idx or 0) + 1
+        
+        # Пробуем вставить, если конфликт - увеличиваем индекс
+        while True:
+            try:
+                conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (f"allowed_user_{next_idx}", str(user_id)))
+                conn.commit()
+                return True
+            except sqlite3.IntegrityError:
+                next_idx += 1
+                # Защита от бесконечного цикла
+                if next_idx > 10000:
+                    return False
     return False
 
 def remove_allowed_user(user_id):
