@@ -163,8 +163,9 @@ def clear_channel_history(cid):
 
 @app.route("/api/add_allowed_user", methods=["POST"])
 def add_allowed_user():
-    """Добавление разрешённого пользователя"""
+    """Добавление разрешённого пользователя с отправкой тестового сообщения"""
     from app.db import add_allowed_user
+    from app.telegram import send_text
     
     user_id = request.form.get("user_id", "").strip()
     if not user_id:
@@ -174,6 +175,14 @@ def add_allowed_user():
         user_id = int(user_id)
     except ValueError:
         return jsonify({"success": False, "error": "User ID должен быть числом"}), 400
+    
+    # Сначала проверяем существование пользователя, отправляя тестовое сообщение
+    test_success, test_err = send_text(user_id, "✅ Проверка подключения к TG Poster\n\nЕсли вы видите это сообщение — ваш User ID верный и бот может отправлять вам уведомления.")
+    if not test_success:
+        return jsonify({
+            "success": False, 
+            "error": f"Не удалось отправить тестовое сообщение пользователю {user_id}. Убедитесь, что пользователь запустил бота. Ошибка: {test_err}"
+        }), 400
     
     add_allowed_user(user_id)
     return redirect(url_for("settings"))
