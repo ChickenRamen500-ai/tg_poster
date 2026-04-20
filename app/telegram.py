@@ -26,6 +26,35 @@ SUPPORTED_IMAGE_FORMATS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_RETRIES = 3
 BASE_RETRY_DELAY = 5  # Базовая задержка между попытками (секунды)
 
+def get_bot_id():
+    """Получает ID бота из токена"""
+    if BOT_TOKEN:
+        return BOT_TOKEN.split(':')[0]
+    return None
+
+def send_notification_to_users(message):
+    """Отправляет уведомление всем разрешённым пользователям"""
+    from app.db import get_allowed_users
+    
+    allowed_users = get_allowed_users()
+    if not allowed_users:
+        logger.debug("ℹ️ Нет разрешённых пользователей для уведомлений")
+        return False
+    
+    success_count = 0
+    for user_id in allowed_users:
+        try:
+            result = send_text(user_id, message)
+            if result[0]:
+                success_count += 1
+                logger.info(f"✅ Уведомление отправлено пользователю {user_id}")
+            else:
+                logger.warning(f"⚠️ Не удалось отправить уведомление пользователю {user_id}: {result[1]}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки уведомления пользователю {user_id}: {e}")
+    
+    return success_count > 0
+
 def validate_chat(chat_id):
     """
     Проверяет существование чата/канала через getChat API.
