@@ -19,8 +19,8 @@ PHOTO_MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 DOCUMENT_MAX_SIZE = 50 * 1024 * 1024  # 50 MB
 IMAGE_COMPRESS_THRESHOLD = 2 * 1024 * 1024  # 2 MB - порог для сжатия изображений
 
-# Поддерживаемые форматы изображений для sendPhoto
-SUPPORTED_IMAGE_FORMATS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+# Поддерживаемые форматы изображений для sendPhoto (без webp - он отправляется как документ)
+SUPPORTED_IMAGE_FORMATS = {".jpg", ".jpeg", ".png", ".gif"}
 
 # Максимальное количество повторных попыток при ошибке 429
 MAX_RETRIES = 3
@@ -299,6 +299,10 @@ def send_media(chat_id, file_path, caption=""):
         # AVIF НЕ поддерживается Telegram напрямую - отправляем как документ
         logger.info(f"📎 AVIF файл будет отправлен как документ (Telegram не поддерживает AVIF в sendPhoto)")
         return send_image_as_document(chat_id, file_path, caption)
+    elif ext == ".webp":
+        # WebP отправляем как документ, чтобы не отправлялся как стикер
+        logger.info(f"📎 WebP файл будет отправлен как документ (чтобы избежать отправки как стикер)")
+        return send_image_as_document(chat_id, file_path, caption)
     else:
         method = "sendDocument"
         file_key = "document"
@@ -306,7 +310,8 @@ def send_media(chat_id, file_path, caption=""):
     url = f"{API_BASE}/{method}"
     
     # Увеличенный таймаут для больших файлов (особенно FLAC, MP3)
-    request_timeout = 120 if file_size > 5 * 1024 * 1024 else 60
+    # Для файлов >10MB используем таймаут 300 секунд (5 минут)
+    request_timeout = 300 if file_size > 10 * 1024 * 1024 else (180 if file_size > 5 * 1024 * 1024 else 60)
     
     # Отправка файла с retry logic
     for attempt in range(MAX_RETRIES):

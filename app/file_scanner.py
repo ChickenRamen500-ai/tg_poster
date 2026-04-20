@@ -36,21 +36,23 @@ def get_folder_tree(base_path=None):
     return tree
 
 def get_folders_list():
-    """Возвращает простой список папок"""
+    """Возвращает простой список папок, исключая errors и sended"""
     tree = get_folder_tree()
     if "error" in tree:
         return []
-    return list(tree.keys())
+    # Исключаем служебные папки errors и sended
+    return [f for f in list(tree.keys()) if f not in ('errors', 'sended')]
 
 def convert_avif_to_jpg(avif_path):
     """Конвертирует AVIF файл в JPG. Возвращает путь к JPG файлу или None при ошибке."""
     try:
+        avif_path = Path(avif_path)
         jpg_path = avif_path.with_suffix('.jpg')
         with Image.open(avif_path) as img:
-            # Конвертируем в RGB (AVIF может иметь альфа-канал)
+            # Конвертируем в RGB (AVIF может иметь альфа-канал, JPEG не поддерживает прозрачность)
             if img.mode in ('RGBA', 'LA', 'P'):
                 img = img.convert('RGB')
-            img.save(jpg_path, 'JPEG', quality=95)
+            img.save(jpg_path, 'JPEG', quality=90)
         return str(jpg_path)
     except Exception as e:
         print(f"⚠️ Ошибка конвертации AVIF: {e}")
@@ -92,7 +94,8 @@ def get_files_in_path(folder_name, subfolder=None):
         return []
     
     # Расширения изображений и видео
-    image_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
+    image_ext = {".jpg", ".jpeg", ".png", ".gif"}  # webp обрабатывается отдельно как документ
+    avif_ext = {".avif"}
     video_ext = {".mp4", ".webm", ".mkv"}
     audio_ext = {".mp3", ".wav", ".ogg", ".flac"}
     # Все остальные файлы (документы и т.д.)
@@ -102,6 +105,10 @@ def get_files_in_path(folder_name, subfolder=None):
     
     for f in path.iterdir():
         if not f.is_file():
+            continue
+        
+        # Пропускаем системные файлы Thumbs.db
+        if f.name.lower() == 'thumbs.db':
             continue
         
         suffix = f.suffix.lower()
@@ -119,7 +126,7 @@ def get_files_in_path(folder_name, subfolder=None):
             else:
                 print(f"❌ Ошибка конвертации AVIF, перемещаем в errors")
                 move_file_to_errors(str(f), "Ошибка конвертации AVIF в JPG")
-        # Все остальные файлы добавляем как есть
+        # Все остальные файлы добавляем как есть (включая webp)
         elif suffix in image_ext or suffix in video_ext or suffix in audio_ext or True:
             result_files.append(str(f))
     

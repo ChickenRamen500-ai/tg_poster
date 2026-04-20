@@ -42,7 +42,7 @@ def get_files_from_queue(source_path):
         return []
     
     # Расширения для всех типов файлов
-    image_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    image_ext = {".jpg", ".jpeg", ".png", ".gif"}  # webp обрабатывается отдельно как документ
     avif_ext = {".avif"}
     video_ext = {".mp4", ".webm", ".mkv"}
     audio_ext = {".mp3", ".wav", ".ogg", ".flac"}
@@ -54,6 +54,10 @@ def get_files_from_queue(source_path):
         if BASE_PROCESSED in f.parents:
             continue
         if not f.is_file():
+            continue
+        
+        # Пропускаем системные файлы Thumbs.db
+        if f.name.lower() == 'thumbs.db':
             continue
             
         suffix = f.suffix.lower()
