@@ -1,6 +1,6 @@
 # app/main.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify
-from app.db import get_conn
+from app.db import get_conn, get_setting, save_setting
 from app.scheduler import start_scheduler, get_files_from_queue
 from app.file_scanner import get_folders_list
 import os, time, json, datetime
@@ -14,12 +14,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
 app.jinja_env.autoescape = False
 
-# Хранилище настроек в памяти (в будущем можно перенести в БД)
-app_settings = {
-    'bot_token': os.getenv("BOT_TOKEN", ""),
-    'timezone': os.getenv("TZ", "Asia/Yekaterinburg"),
-    'media_path': os.getenv("MEDIA_PATH", "/app/media")
-}
+# Загружаем настройки из БД при старте
+def load_app_settings():
+    """Загрузка настроек из БД или переменных окружения"""
+    return {
+        'bot_token': get_setting('bot_token', os.getenv("BOT_TOKEN", "")),
+        'timezone': get_setting('timezone', os.getenv("TZ", "Asia/Yekaterinburg")),
+        'media_path': get_setting('media_path', os.getenv("MEDIA_PATH", "/app/media"))
+    }
+
+app_settings = load_app_settings()
 
 @app.route("/")
 def dashboard():
@@ -56,6 +60,8 @@ def save_bot_token():
     token = request.form.get("bot_token", "").strip()
     if token:
         app_settings['bot_token'] = token
+        # Сохраняем в БД для персистентности
+        save_setting('bot_token', token)
         # Обновляем переменную окружения для telegram.py
         os.environ["BOT_TOKEN"] = token
         # Перезагружаем модуль telegram чтобы применить новый токен
@@ -69,6 +75,8 @@ def save_timezone():
     """Сохранение часового пояса"""
     tz = request.form.get("timezone", "Asia/Yekaterinburg")
     app_settings['timezone'] = tz
+    # Сохраняем в БД для персистентности
+    save_setting('timezone', tz)
     os.environ["TZ"] = tz
     time.tzset()  # Применяем часовой пояс (работает на Unix)
     return redirect(url_for("settings"))
@@ -78,19 +86,21 @@ def save_media_path():
     """Сохранение пути к медиафайлам"""
     path = request.form.get("media_path", "/app/media")
     app_settings['media_path'] = path
+    # Сохраняем в БД для персистентности
+    save_setting('media_path', path)
     os.environ["MEDIA_PATH"] = path
     return redirect(url_for("settings"))
 
 @app.route("/api/add_channel", methods=["POST"])
 def add_channel():
-    """Добавление канала с валидацией chat_id через Telegram API"""
-    from app.telegram import send_text
+    """Добавление канала с валидацией chat_id через getChat API"""
+    from app.telegram import validate_chat
     
     chat_id = request.form["chat_id"]
     name = request.form["name"]
     
-    # Проверяем, существует ли канал и добавлен ли бот
-    success, err = send_text(chat_id, "🔍 Проверка подключения к каналу...")
+    # Проверяем, существует ли канал и добавлен ли бот через getChat
+    success, err = validate_chat(chat_id)
     if not success:
         return jsonify({
             "success": False, 
