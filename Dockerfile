@@ -1,8 +1,10 @@
 FROM python:3.13-slim
 
-# Установка системных библиотек для поддержки AVIF
+# Установка системных библиотек для поддержки AVIF и сборки
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libavif-dev \
+    gcc \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Рабочая директория
