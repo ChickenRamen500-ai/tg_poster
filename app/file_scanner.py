@@ -2,10 +2,7 @@
 from pathlib import Path
 import os
 from PIL import Image
-from pillow_heif import register_heif_opener
-
-# Регистрируем поддержку HEIF/AVIF форматов
-register_heif_opener()
+import pillow_avif  # регистрирует поддержку AVIF
 
 # Путь внутри контейнера
 BASE_MEDIA = Path(os.getenv("MEDIA_PATH", "/app/media"))
