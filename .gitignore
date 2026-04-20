@@ -1,53 +1,161 @@
 ```
-# Python
+# Dependencies
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Logs
-*.log
-
-# Environment
+.Python
+env/
+venv/
+.venv/
+.ENV
+.ENV.local
 .env
 .env.local
 .env.*
-
-# Dependencies
 .venv/
 venv/
-node_modules/
-
-# System files
-.DS_Store
-Thumbs.db
-
+ENV/
+ENV.local
+.env.django
+.env.local
+.env.mysql
+.env.postgres
+# Generated files
+*.so
+.Python
+__pycache__/
+*.py[cod]
+*$py.class
+*$pyc.class
+**/__pycache__/
+**/*.py[co]
+*.so
+.libs
+bin/
 # Coverage
-coverage/
-htmlcov/
 .coverage
-
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+# Translations
+*.mo
+*.pot
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+# Flask
+instance/
+.webassets-cache
+# Jupyter Notebook
+.ipynb_checkpoints
+# pyenv
+.python-version
+# pipenv
+Pipfile.lock
+# PEP 582
+__pypackages__/
+# Celery
+celerybeat-schedule
+celerybeat.pid
+# Sage
+*.sage.py
+# Environments
+.venv
+venv
+ENV
+env/
+venv/
+.venv/
+.env
+.ENV
+.env.local
+.env.shared
+.env.dev
+.env.prod
+.env.backup
+.env.staging
+.env.testing
+.env.docker
+.env.example
+.env.sample
+.env.template
+.env.default
+.env.local
+.env.backup
+.env.save
+.env~
+.env.local~
+.env.prod~
+.env.backup~
+.env.save~
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+# Logs
+*.log
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+# PyInstaller
+*.manifest
+*.spec
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+coverage/
+.vscode
 ```

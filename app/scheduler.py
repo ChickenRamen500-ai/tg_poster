@@ -6,7 +6,7 @@ import hashlib
 import logging
 from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.db import get_conn, init_db
+from app.db import get_conn
 from app.telegram import send_media, send_text, get_next_delay
 
 # Настройка логирования
@@ -366,7 +366,6 @@ scheduler.add_job(auto_switch_queues, "interval", seconds=30, id="auto_switch")
 scheduler.add_job(process_queues, "interval", seconds=10, id="process_queues")
 
 def start_scheduler():
-    init_db()
     scheduler.start()
     logger.info("🔄 Планировщик запущен (проверка каждые 10 сек)")
 
