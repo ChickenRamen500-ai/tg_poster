@@ -1,0 +1,16 @@
+services:
+  pixai-tagger:
+    build: .
+    volumes:
+      - "F:/sorter2:/workspace"
+    ports:
+      - "5001:5000"  # Порт 5001, чтобы не конфликтовал с первым контейнером
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
